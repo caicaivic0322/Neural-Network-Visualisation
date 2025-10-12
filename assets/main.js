@@ -46,6 +46,11 @@ async function initializeVisualizer() {
     connectionRadius: VISUALIZER_CONFIG.connectionRadius,
   });
 
+  if (typeof window !== "undefined") {
+    // Expose scene instance for interactive debugging in DevTools.
+    window.neuralScene = neuralScene;
+  }
+
   const resetBtn = document.getElementById("resetBtn");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
@@ -67,6 +72,12 @@ async function initializeVisualizer() {
         : new Float32Array(0);
     const probabilities = softmax(Array.from(logitsTyped));
     probabilityPanel.update(probabilities);
+
+    if (typeof window !== "undefined") {
+      const scene = window.neuralScene;
+      const outputLayer = scene?.layerMeshes?.[scene.layerMeshes.length - 1];
+      console.log("Output layer colors", outputLayer?.mesh?.instanceColor?.array);
+    }
   }
 
   digitCanvas.setChangeHandler(() => refreshNetworkState());
@@ -685,25 +696,8 @@ class NeuralVisualizer {
     const safeScale = scale > 1e-6 ? scale : 1;
     for (let i = 0; i < values.length; i += 1) {
       const value = values[i];
-      const normalized = clamp(value / safeScale, -1, 1);
-      const magnitude = Math.abs(normalized);
-      if (magnitude < 0.02) {
-        this.tempColor.setRGB(0.12, 0.14, 0.2);
-      } else if (normalized >= 0) {
-        const t = magnitude;
-        this.tempColor.setRGB(
-          lerp(0.35, 1.0, t),
-          lerp(0.4, 0.98, t),
-          lerp(0.28, 0.65, t),
-        );
-      } else {
-        const t = magnitude;
-        this.tempColor.setRGB(
-          lerp(0.1, 0.35, t),
-          lerp(0.18, 0.45, t),
-          lerp(0.45, 1.0, t),
-        );
-      }
+      const normalized = clamp(value / safeScale, 0, 1);
+      this.tempColor.setRGB(normalized, normalized, normalized);
       mesh.setColorAt(i, this.tempColor);
     }
     mesh.instanceColor.needsUpdate = true;
