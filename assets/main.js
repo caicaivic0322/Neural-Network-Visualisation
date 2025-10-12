@@ -452,7 +452,7 @@ class NeuralVisualizer {
     this.controls.dampingFactor = 0.08;
     this.controls.minDistance = 8;
     this.controls.maxDistance = 52;
-    this.controls.target.set(0, 6, 0);
+    this.controls.target.set(0, 0, 0);
 
     const ambient = new THREE.AmbientLight(0xffffff, 1.2);
     this.scene.add(ambient);
