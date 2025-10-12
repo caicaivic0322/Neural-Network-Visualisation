@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST MLP – Inference Visualization</title>
+  <script type="module" crossorigin src="./assets/main.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/app.css">
+</head>
+<body>
+
+    <!-- 2D Grid Overlay -->
+    <div id="overlay2d" class="overlay-2d">
+      <div class="container">
+        <div id="gridContainer" class="grid-container"></div>
+      </div>
+    </div>
+
+    <!-- Reset Button -->
+    <div id="resetButtonContainer" class="reset-button-container">
+        <button id="resetBtn">✖</button>
+    </div>
+
+    <!-- Prediction Chart Overlay -->
+    <div id="predictionOverlay" class="prediction-overlay">
+        <div class="prediction-container">
+            <div id="predictionChart" class="prediction-chart">
+        
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions Overlay -->
+    <div id="instructionsOverlay" class="instructions-overlay">
+        <div class="instructions-container">
+            <div class="instructions-content">
+                <p><strong>Draw:</strong> Click and drag on the grid (right click to erase)</p>
+                <p><strong>3D Controls:</strong> • Left drag = rotate • Right drag = pan • Scroll = zoom</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Instructions Overlay -->
+    <div id="mobileInstructionsOverlay" class="mobile-instructions-overlay">
+        <div class="mobile-instructions-content">
+            <div class="mobile-instructions-title">Touch Controls</div>
+            <ul class="mobile-gesture-list">
+                <li><strong>Draw:</strong> Tap and drag on grid</li>
+                <li><strong>Rotate:</strong> One finger drag</li>
+                <li><strong>Pan:</strong> Two fingers drag</li>
+                <li><strong>Zoom:</strong> Pinch to zoom</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Info Button -->
+    <div id="infoButton" class="info-button">
+        <span>i</span>
+    </div>
+
+    <!-- MNIST Sample Images - Bottom Edge -->
+    <div id="mnistImagesContainer" class="mnist-images-container"></div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="info-modal">
+        <div class="info-modal-content">
+            <div class="info-modal-header">
+                <h3>MNIST Digit Classification – Inference Visualization</h3>
+                <button id="closeInfoModal" class="close-modal-btn">×</button>
+            </div>
+            <div class="info-modal-body">
+                <p><strong>Interactive Neural Network Visualization</strong></p>
+                <p>This experience highlights a compact multi-layer perceptron (MLP) trained on MNIST. Draw a digit and watch the activations course through each fully-connected layer in real time.</p>
+                
+                <h4>How to Use:</h4>
+                <ul>
+                    <li><strong>Draw:</strong> Click and drag on the 2D grid (top-left) to draw a digit</li>
+                    <li><strong>Watch:</strong> See your drawing flow through the neural network layers in 3D</li>
+                    <li><strong>Prediction:</strong> View the network's confidence for each digit (0-9) in the chart (top-right)</li>
+                </ul>
+
+                <h4>Network Architecture (default export):</h4>
+                <ul>
+                    <li><strong>Input Layer:</strong> 28×28 pixel grid (your drawing)</li>
+                    <li><strong>Dense Layer 1:</strong> 784 → 64 neurons with ReLU</li>
+                    <li><strong>Dense Layer 2:</strong> 64 → 32 neurons with ReLU</li>
+                    <li><strong>Output Layer:</strong> 32 → 10 logits → softmax probabilities</li>
+                </ul>
+
+                <h4>3D Controls:</h4>
+                <ul>
+                    <li><strong>Rotate:</strong> Left click + drag</li>
+                    <li><strong>Pan:</strong> Right click + drag</li>
+                    <li><strong>Zoom:</strong> Scroll wheel</li>
+                </ul>
+
+                <h4>Color Mapping:</h4>
+                <ul>
+                    <li><strong>Nodes:</strong> Color represents activation strength (deep blues for low/negative values, vibrant corals for strong positive activations)</li>
+                    <li><strong>Connections:</strong> Bright warm tones indicate strong positive contributions, cool tones show negative influence, and dim lines are near-zero.</li>
+                </ul>
+
+                <h4>Train & Export Your Own:</h4>
+                <ul>
+                    <li>Run <code>python training/mlp_train.py</code> to train the MLP with Apple Metal acceleration when available.</li>
+                    <li>The script writes <code>exports/mlp_weights.json</code>, which the visualizer loads on refresh.</li>
+                    <li>Tweak hidden sizes, epochs, or export paths via CLI flags documented in <code>training/mlp_train.py</code>.</li>
+                </ul>
+
+                <h4>Real-time Features:</h4>
+                <ul>
+                    <li><strong>Layer Activations:</strong> Instanced spheres show activations per neuron with color-coded magnitude.</li>
+                    <li><strong>Important Connections:</strong> Each target neuron displays its strongest incoming weights for clarity.</li>
+                    <li><strong>Live Probabilities:</strong> The bar chart updates logits → softmax probabilities in real time.</li>
+                </ul>
+
+                <p class="info-note">The network is intentionally compact for smooth, real-time rendering. Feel free to retrain with different layer sizes—just keep the architecture modest so the 3D view stays responsive.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+
+
+
+    <!-- 100% privacy-first analytics -->
+    <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+  
+</body>
+</html>
