@@ -491,9 +491,8 @@ class NeuralVisualizer {
       this.options.inputNodeSize,
     );
     const hiddenGeometry = new THREE.SphereGeometry(this.options.hiddenNodeRadius, 16, 16);
-    // Match input layer approach: Lambert material without explicit vertexColors flag
-    const hiddenBaseMaterial = new THREE.MeshLambertMaterial();
-    hiddenBaseMaterial.emissive.setRGB(0.08, 0.08, 0.08);
+    // Test with MeshBasicMaterial for hidden/output neurons (no lighting influence)
+    const hiddenBaseMaterial = new THREE.MeshBasicMaterial();
     hiddenBaseMaterial.toneMapped = false;
 
     const layerCount = this.mlp.architecture.length;
@@ -509,7 +508,9 @@ class NeuralVisualizer {
         material.emissive.setRGB(0.08, 0.08, 0.08);
         const mesh = new THREE.InstancedMesh(inputGeometry, material, neuronCount);
         mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        // Let setColorAt manage creation of the instanceColor attribute for parity with input layer
+        const colorAttribute = new THREE.InstancedBufferAttribute(new Float32Array(neuronCount * 3), 3);
+        colorAttribute.setUsage(THREE.DynamicDrawUsage);
+        mesh.instanceColor = colorAttribute;
 
         positions.forEach((position, instanceIndex) => {
           this.tempObject.position.copy(position);
@@ -528,8 +529,9 @@ class NeuralVisualizer {
         const geometry = hiddenGeometry.clone();
         const mesh = new THREE.InstancedMesh(geometry, material, neuronCount);
         mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        // Let setColorAt manage creation of the instanceColor attribute for parity with input layer
-        // Do not bind attribute manually; let setColorAt/manage handle instancing color like input layer
+        const colorAttribute = new THREE.InstancedBufferAttribute(new Float32Array(neuronCount * 3), 3);
+        colorAttribute.setUsage(THREE.DynamicDrawUsage);
+        mesh.instanceColor = colorAttribute;
 
         positions.forEach((position, instanceIndex) => {
           this.tempObject.position.copy(position);
@@ -604,8 +606,9 @@ class NeuralVisualizer {
       // Clone geometry per mesh so instanceColor can be bound independently
       const mesh = new THREE.InstancedMesh(baseGeometry.clone(), material.clone(), selected.length);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        // Let setColorAt manage creation of the instanceColor attribute for parity with input layer
-      // Do not bind attribute manually; keep parity with input layer behavior
+      const colorAttribute = new THREE.InstancedBufferAttribute(new Float32Array(selected.length * 3), 3);
+      colorAttribute.setUsage(THREE.DynamicDrawUsage);
+      mesh.instanceColor = colorAttribute;
 
       selected.forEach((connection, instanceIndex) => {
         const sourcePosition = this.layerMeshes[layerIndex].positions[connection.sourceIndex];
