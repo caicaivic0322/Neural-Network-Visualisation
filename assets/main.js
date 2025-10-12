@@ -429,6 +429,8 @@ class NeuralVisualizer {
         hiddenNodeRadius: 0.22,
         maxConnectionsPerNeuron: 24,
         connectionRadius: 0.017,
+        outputLabelOffset: 0.65,
+        outputLabelScale: 0.48,
       },
       options || {},
     );
@@ -436,6 +438,7 @@ class NeuralVisualizer {
     this.connectionGroups = [];
     this.tempObject = new THREE.Object3D();
     this.tempColor = new THREE.Color();
+    this.outputLabels = [];
     this.initThreeScene();
     this.buildLayers();
     this.buildConnections();
@@ -450,6 +453,9 @@ class NeuralVisualizer {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
+
+    this.labelGroup = new THREE.Group();
+    this.scene.add(this.labelGroup);
 
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
     this.camera.position.set(-15, 0, 15);
@@ -495,6 +501,7 @@ class NeuralVisualizer {
     const totalWidth = (layerCount - 1) * this.options.layerSpacing;
     const startX = -totalWidth / 2;
 
+    this.clearOutputLabels();
     this.mlp.architecture.forEach((neuronCount, layerIndex) => {
       const layerX = startX + layerIndex * this.options.layerSpacing;
       const positions = this.computeLayerPositions(layerIndex, neuronCount, layerX);
@@ -542,6 +549,9 @@ class NeuralVisualizer {
         this.scene.add(mesh);
         const layerType = isOutputLayer ? "output" : "hidden";
         this.layerMeshes.push({ mesh, positions, type: layerType });
+        if (isOutputLayer) {
+          this.createOutputLabels(positions);
+        }
       }
     });
   }
@@ -593,6 +603,72 @@ class NeuralVisualizer {
       }
     }
     return positions;
+  }
+
+  clearOutputLabels() {
+    if (!this.outputLabels.length || !this.labelGroup) return;
+    this.outputLabels.forEach((sprite) => {
+      if (sprite.material.map) {
+        sprite.material.map.dispose();
+      }
+      sprite.material.dispose();
+      this.labelGroup.remove(sprite);
+    });
+    this.outputLabels = [];
+  }
+
+  createOutputLabels(positions) {
+    if (!this.labelGroup) return;
+    const offset = this.options.outputLabelOffset ?? 0.65;
+    const scale = this.options.outputLabelScale ?? 0.48;
+    positions.forEach((position, index) => {
+      const label = this.buildDigitSprite(String(index));
+      label.position.copy(position);
+      label.position.x += offset;
+      label.scale.set(scale, scale, scale);
+      this.labelGroup.add(label);
+      this.outputLabels.push(label);
+    });
+  }
+
+  buildDigitSprite(text) {
+    const size = 128;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Canvas 2D context unavailable for label rendering.");
+    }
+    ctx.clearRect(0, 0, size, size);
+    ctx.font = `900 ${Math.floor(size * 0.62)}px "Inter", "Segoe UI", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(235, 245, 255, 0.95)";
+    ctx.strokeStyle = "rgba(12, 25, 44, 0.85)";
+    ctx.lineWidth = size * 0.08;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+    ctx.shadowBlur = size * 0.12;
+    ctx.strokeText(text, size / 2, size / 2);
+    ctx.fillText(text, size / 2, size / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    texture.anisotropy = 2;
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.LinearFilter;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.center.set(0, 0.5);
+    return sprite;
   }
 
   buildConnections() {
