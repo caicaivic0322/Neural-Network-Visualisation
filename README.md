@@ -53,3 +53,46 @@ After training, update `CONFIG.weightUrl` in `assets/main-CKMdEyXu.js` if you ex
 - Colors encode activation sign and magnitude (cool tones for negative/low, warm tones for strong positive contributions).
 - The default export (`exports/sample_mlp_weights.json`) comes from a quick one-epoch training run and should reach ~94% accuracy. Retrain for higher fidelity.
 - If you adjust the architecture, ensure the JSON export reflects the new layer sizes; the front-end builds the scene dynamically from that metadata.
+
+## Deployment
+
+The server keeps live assets separate from active development under `releases/`:
+
+- `releases/repo.git` – bare repository that receives pushes.
+- `releases/current/` – files served by your static HTTP server.
+- `releases/backups/<timestamp>/` – point-in-time snapshots for quick rollback.
+
+Initial setup (already done if you are reading this after cloning from the server):
+
+```bash
+mkdir -p releases/current releases/backups releases/.deploy_tmp
+git init --bare releases/repo.git
+```
+
+At deploy time the `post-receive` hook in `releases/repo.git/hooks/` invokes `deploy.sh`, which:
+
+1. Checks out the pushed commit into `releases/.deploy_tmp`.
+2. Syncs those files into `releases/current/`.
+3. Copies the same tree into `releases/backups/<timestamp>/` and records the commit hash.
+
+Only pushes to the `production` branch trigger the hook. To ship a new release from your working clone:
+
+```bash
+git checkout production
+# merge or cherry-pick changes you want to deploy
+git push server production
+```
+
+Where the `server` remote points at the bare repo on the host:
+
+```bash
+git remote add server user@host:/home/Neural-Network-Visualisation/releases/repo.git
+```
+
+You can also deploy a specific commit manually:
+
+```bash
+./deploy.sh <commit_sha>
+```
+
+Running the script without arguments prints a usage message.
