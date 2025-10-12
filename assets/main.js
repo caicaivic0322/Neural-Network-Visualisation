@@ -445,7 +445,7 @@ class NeuralVisualizer {
     document.body.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-    this.camera.position.set(14, 10, 24);
+    this.camera.position.set(-20, 5, 30);
 
     this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;

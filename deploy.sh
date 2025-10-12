@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./deploy.sh <commit-ish>
-# The post-receive hook passes the updated commit; you can also call this manually.
+# Usage: ./deploy.sh [commit-ish]
+# When no commit is supplied, the script deploys the current branch's HEAD.
 
-commit="${1:-}"
-if [[ -z "$commit" ]]; then
-  echo "Usage: $0 <commit>" >&2
+commit_ref="${1:-HEAD}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if ! REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "Error: $SCRIPT_DIR is not inside a git repository." >&2
+  exit 1
+fi
+
+if ! commit="$(git -C "$REPO_ROOT" rev-parse --verify "$commit_ref" 2>/dev/null)"; then
+  echo "Error: Unable to resolve commit '$commit_ref'." >&2
   exit 1
 fi
 
 DEPLOY_ROOT="/home/Neural-Network-Visualisation/releases"
-REPO_DIR="$DEPLOY_ROOT/repo.git"
 CURRENT_DIR="$DEPLOY_ROOT/current"
 BACKUP_DIR="$DEPLOY_ROOT/backups"
 TMP_DIR="$DEPLOY_ROOT/.deploy_tmp"
@@ -22,8 +28,7 @@ mkdir -p "$CURRENT_DIR" "$BACKUP_DIR"
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
-git --git-dir="$REPO_DIR" --work-tree="$TMP_DIR" checkout -f "$commit"
-git --git-dir="$REPO_DIR" --work-tree="$TMP_DIR" clean -fd
+git -C "$REPO_ROOT" archive "$commit" | tar -C "$TMP_DIR" -xf -
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 backup_path="$BACKUP_DIR/$timestamp"

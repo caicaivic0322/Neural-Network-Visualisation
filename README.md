@@ -58,41 +58,20 @@ After training, update `VISUALIZER_CONFIG.weightUrl` in `assets/main.js` if you 
 
 The server keeps live assets separate from active development under `releases/`:
 
-- `releases/repo.git` – bare repository that receives pushes.
 - `releases/current/` – files served by your static HTTP server.
 - `releases/backups/<timestamp>/` – point-in-time snapshots for quick rollback.
+- `releases/.deploy_tmp/` – staging area used during deployment.
 
-Initial setup (already done if you are reading this after cloning from the server):
-
-```bash
-mkdir -p releases/current releases/backups releases/.deploy_tmp
-git init --bare releases/repo.git
-```
-
-At deploy time the `post-receive` hook in `releases/repo.git/hooks/` invokes `deploy.sh`, which:
-
-1. Checks out the pushed commit into `releases/.deploy_tmp`.
-2. Syncs those files into `releases/current/`.
-3. Copies the same tree into `releases/backups/<timestamp>/` and records the commit hash.
-
-Only pushes to the `production` branch trigger the hook. To ship a new release from your working clone:
+To publish the code you currently have checked out, run the deploy script from the repository root:
 
 ```bash
-git checkout production
-# merge or cherry-pick changes you want to deploy
-git push server production
+./deploy.sh
 ```
 
-Where the `server` remote points at the bare repo on the host:
+You can target a different commit or branch explicitly:
 
 ```bash
-git remote add server user@host:/home/Neural-Network-Visualisation/releases/repo.git
+./deploy.sh <commit-ish>
 ```
 
-You can also deploy a specific commit manually:
-
-```bash
-./deploy.sh <commit_sha>
-```
-
-Running the script without arguments prints a usage message.
+The script exports the requested commit into the staging area, syncs it into `releases/current/`, and saves the same tree under `releases/backups/<timestamp>/` with the commit hash recorded in `.commit`.
