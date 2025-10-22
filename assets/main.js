@@ -6,7 +6,7 @@ const VISUALIZER_CONFIG = {
   hiddenSpacing: 0.95,
   inputNodeSize: 0.18,
   hiddenNodeRadius: 0.22,
-  connectionRadius: 0.017,
+  connectionRadius: 0.005,
   showFpsOverlay: true,
   brush: {
     drawRadius: 1.4,
@@ -1357,7 +1357,7 @@ class NeuralVisualizer {
         inputNodeSize: 0.18,
         hiddenNodeRadius: 0.22,
         maxConnectionsPerNeuron: 24,
-        connectionRadius: 0.017,
+        connectionRadius: 0.005,
         outputLabelOffset: 0.65,
         outputLabelScale: 0.48,
         showFpsOverlay: false,
@@ -2111,7 +2111,7 @@ class NeuralVisualizer {
   }
 
   buildConnections() {
-    const connectionRadius = this.options.connectionRadius ?? 0.02;
+    const connectionRadius = this.options.connectionRadius ?? 0.005;
     const baseGeometry = new THREE.CylinderGeometry(connectionRadius, connectionRadius, 1, 10, 1, true);
     const material = new THREE.MeshLambertMaterial({
       transparent: true,
