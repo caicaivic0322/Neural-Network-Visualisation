@@ -1327,6 +1327,16 @@ class NeuronDetailPanel {
     `
         : "";
 
+    const totalsBlock =
+      biasMarkup || totalMarkup
+        ? `
+      <div class="neuron-detail-panel__totals">
+        ${biasMarkup}
+        ${totalMarkup}
+      </div>
+    `
+        : "";
+
     const incomingSection = hasIncoming
       ? `
       <div>
@@ -1338,8 +1348,6 @@ class NeuronDetailPanel {
           <div>Produkt</div>
         </div>
         ${incomingRows}
-        ${biasMarkup}
-        ${totalMarkup}
       </div>
     `
       : `<div class="neuron-detail-panel__empty">Keine eingehenden Verbindungen für diese Schicht.</div>`;
@@ -1359,17 +1367,10 @@ class NeuronDetailPanel {
     `
       : "";
 
-    const summaryParts = [];
-    if (payload.preActivation !== null && payload.preActivation !== undefined) {
-      summaryParts.push(
-        `Σ = Σ(input × gewicht) ${payload.bias !== null && payload.bias !== undefined ? "+ bias " : ""}= ${this.formatValue(payload.preActivation)}`,
-      );
-    }
-    if (payload.activationValue !== null && payload.activationValue !== undefined) {
-      summaryParts.push(`Aktivierung = ${this.formatValue(payload.activationValue)}`);
-    }
-
-    const summaryText = summaryParts.join(" • ");
+    const summaryFormula =
+      payload.preActivation !== null && payload.preActivation !== undefined
+        ? `Σ = Σ(input × gewicht)${payload.bias !== null && payload.bias !== undefined ? " + bias" : ""}`
+        : "";
 
     this.root.innerHTML = `
       <div class="neuron-detail-panel__inner">
@@ -1380,7 +1381,10 @@ class NeuronDetailPanel {
           <button type="button" class="neuron-detail-panel__close">Auswahl aufheben</button>
         </div>
         <div class="neuron-detail-panel__body">
-          <div class="neuron-detail-panel__summary">${summaryText || ""}</div>
+          <div class="neuron-detail-panel__summary">
+            ${summaryFormula ? `<div>${summaryFormula}</div>` : ""}
+          </div>
+          ${totalsBlock}
           <div class="neuron-detail-panel__activations">
             <span>Eingangsschicht-Größe: ${payload.previousLayerSize ?? "—"}</span>
             <span>Ausgangsschicht-Größe: ${payload.nextLayerSize ?? "—"}</span>

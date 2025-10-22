@@ -208,6 +208,14 @@ body > canvas {
   font-size: 0.95rem;
   color: rgba(198, 212, 255, 0.86);
   line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.neuron-detail-panel__totals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
 }
 
 .neuron-detail-panel__activations {
