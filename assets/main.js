@@ -822,8 +822,15 @@ class NeuralVisualizer {
   }
 
   animate() {
-    this.renderer.setAnimationLoop(() => {
+    const frameIntervalMs = 1000 / 60;
+    let lastFrameTime = 0;
+
+    this.renderer.setAnimationLoop((time) => {
       this.controls.update();
+      if (!Number.isFinite(time) || time - lastFrameTime < frameIntervalMs) {
+        return;
+      }
+      lastFrameTime = time;
       this.renderer.render(this.scene, this.camera);
     });
   }
