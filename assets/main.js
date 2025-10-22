@@ -1559,9 +1559,6 @@ class NeuralVisualizer {
     this.selectionConnectionData = data;
     const baseGeometry = this.ensureSelectionGeometry();
     const connectionMaterial = new THREE.MeshBasicMaterial({
-      transparent: true,
-      opacity: 0.9,
-      depthWrite: false,
       toneMapped: false,
     });
 
@@ -2113,11 +2110,7 @@ class NeuralVisualizer {
   buildConnections() {
     const connectionRadius = this.options.connectionRadius ?? 0.005;
     const baseGeometry = new THREE.CylinderGeometry(connectionRadius, connectionRadius, 1, 10, 1, true);
-    const material = new THREE.MeshLambertMaterial({
-      transparent: true,
-      opacity: 0.45,
-      depthWrite: false,
-    });
+    const material = new THREE.MeshLambertMaterial();
     // Do not set vertexColors explicitly; instancing color works independently
 
     this.mlp.layers.forEach((layer, layerIndex) => {
