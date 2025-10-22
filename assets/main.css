@@ -96,6 +96,7 @@ body > canvas {
   gap: 8px;
   width: 52px;
   height: 100%;
+  margin-top: 12px;
   pointer-events: auto;
 }
 
@@ -808,7 +809,7 @@ body > canvas {
   bottom: 4px;
   right: 12px;
   z-index: 24;
-  font-size: 0.48rem;
+  font-size: 0.58rem;
   letter-spacing: 0.005em;
   color: rgba(214, 226, 255, 0.6);
   text-decoration: none;
