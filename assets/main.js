@@ -2167,12 +2167,11 @@ class NeuralVisualizer {
     for (let i = 0; i < values.length; i += 1) {
       const value = values[i];
       const normalized = clamp(value / safeScale, 0, 1);
-      if (
+      const isSelected =
         activeSelection &&
-        (layerIndex !== activeSelection.layerIndex || i !== activeSelection.neuronIndex)
-      ) {
-        this.tempColor.setRGB(0.14, 0.15, 0.18);
-      } else if (activeSelection) {
+        layerIndex === activeSelection.layerIndex &&
+        i === activeSelection.neuronIndex;
+      if (isSelected) {
         this.tempColor.copy(this.highlightColor);
       } else {
         this.tempColor.setRGB(normalized, normalized, normalized);
