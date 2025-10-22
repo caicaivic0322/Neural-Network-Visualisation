@@ -199,6 +199,31 @@ body > canvas {
   pointer-events: none;
 }
 
+.fps-overlay {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  z-index: 11;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgba(10, 16, 30, 0.88);
+  border: 1px solid rgba(91, 160, 255, 0.35);
+  color: rgba(225, 235, 255, 0.9);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  text-transform: uppercase;
+  pointer-events: none;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.fps-overlay__value {
+  display: inline-block;
+  min-width: 56px;
+  text-align: center;
+}
+
 .instructions-container {
   pointer-events: auto;
   background: rgba(8, 14, 28, 0.8);

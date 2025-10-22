@@ -7,6 +7,7 @@ const VISUALIZER_CONFIG = {
   inputNodeSize: 0.18,
   hiddenNodeRadius: 0.22,
   connectionRadius: 0.017,
+  showFpsOverlay: true,
   brush: {
     drawRadius: 2.0,
     eraseRadius: 2.5,
@@ -44,6 +45,7 @@ async function initializeVisualizer() {
     inputNodeSize: VISUALIZER_CONFIG.inputNodeSize,
     hiddenNodeRadius: VISUALIZER_CONFIG.hiddenNodeRadius,
     connectionRadius: VISUALIZER_CONFIG.connectionRadius,
+    showFpsOverlay: VISUALIZER_CONFIG.showFpsOverlay,
   });
 
   if (typeof window !== "undefined") {
@@ -416,6 +418,45 @@ class ProbabilityPanel {
   }
 }
 
+class FpsMonitor {
+  constructor() {
+    this.frameCount = 0;
+    this.accumulatedTime = 0;
+    this.lastTimestamp = 0;
+
+    this.root = document.createElement("div");
+    this.root.className = "fps-overlay";
+
+    this.valueElement = document.createElement("span");
+    this.valueElement.className = "fps-overlay__value";
+    this.valueElement.textContent = "— fps";
+
+    this.root.appendChild(this.valueElement);
+    document.body.appendChild(this.root);
+  }
+
+  update(time) {
+    if (!Number.isFinite(time)) return;
+    if (this.lastTimestamp === 0) {
+      this.lastTimestamp = time;
+      return;
+    }
+    const delta = time - this.lastTimestamp;
+    this.lastTimestamp = time;
+    if (delta < 0) return;
+
+    this.accumulatedTime += delta;
+    this.frameCount += 1;
+
+    if (this.accumulatedTime >= 250) {
+      const fps = Math.round((this.frameCount * 1000) / this.accumulatedTime);
+      this.valueElement.textContent = `${fps} fps`;
+      this.accumulatedTime = 0;
+      this.frameCount = 0;
+    }
+  }
+}
+
 class NeuralVisualizer {
   constructor(mlp, options) {
     this.mlp = mlp;
@@ -431,6 +472,7 @@ class NeuralVisualizer {
         connectionRadius: 0.017,
         outputLabelOffset: 0.65,
         outputLabelScale: 0.48,
+        showFpsOverlay: false,
       },
       options || {},
     );
@@ -453,6 +495,7 @@ class NeuralVisualizer {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
+    this.fpsMonitor = this.options.showFpsOverlay ? new FpsMonitor() : null;
 
     this.labelGroup = new THREE.Group();
     this.scene.add(this.labelGroup);
@@ -763,6 +806,9 @@ class NeuralVisualizer {
       if (!sourceValues) return;
       this.applyConnectionColors(group, sourceValues);
     });
+    if (typeof this.requestRender === "function") {
+      this.requestRender();
+    }
   }
 
   applyNodeColors(layer, values, scale) {
@@ -819,20 +865,46 @@ class NeuralVisualizer {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    if (typeof this.requestRender === "function") {
+      this.requestRender();
+    }
   }
 
   animate() {
-    const frameIntervalMs = 1000 / 60;
-    let lastFrameTime = 0;
+    this.renderRequested = false;
+    this.needsContinuousRender = false;
 
-    this.renderer.setAnimationLoop((time) => {
-      this.controls.update();
-      if (!Number.isFinite(time) || time - lastFrameTime < frameIntervalMs) {
-        return;
-      }
-      lastFrameTime = time;
+    const renderFrame = (time) => {
+      this.renderRequested = false;
+      const controlsChanged = this.controls.update();
       this.renderer.render(this.scene, this.camera);
+      if (this.fpsMonitor) {
+        this.fpsMonitor.update(time);
+      }
+      if (this.needsContinuousRender || controlsChanged) {
+        this.requestRender();
+      }
+    };
+
+    this.requestRender = () => {
+      if (this.renderRequested) return;
+      this.renderRequested = true;
+      requestAnimationFrame(renderFrame);
+    };
+
+    this.controls.addEventListener("start", () => {
+      this.needsContinuousRender = true;
+      this.requestRender();
     });
+    this.controls.addEventListener("end", () => {
+      this.needsContinuousRender = false;
+      this.requestRender();
+    });
+    this.controls.addEventListener("change", () => {
+      this.requestRender();
+    });
+
+    this.requestRender();
   }
 }
 
