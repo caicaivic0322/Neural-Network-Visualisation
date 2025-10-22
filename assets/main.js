@@ -32,6 +32,7 @@ async function initializeVisualizer() {
     throw new Error("Ungültige Netzwerkdefinition.");
   }
 
+  const timelineSnapshots = hydrateTimeline(definition.timeline);
   const neuralModel = new FeedForwardModel(definition.network);
   const digitCanvas = new DigitSketchPad(document.getElementById("gridContainer"), 28, 28, {
     brush: VISUALIZER_CONFIG.brush,
@@ -78,8 +79,24 @@ async function initializeVisualizer() {
     // No noisy debug logs; visual updates are visible in-scene
   }
 
+  const timelineController = setupTimelineSlider(timelineSnapshots, {
+    onSnapshotChange(snapshot) {
+      if (!snapshot) return;
+      neuralModel.updateLayers(snapshot.layers);
+      neuralScene.updateNetworkWeights();
+      refreshNetworkState();
+    },
+  });
+
   digitCanvas.setChangeHandler(() => refreshNetworkState());
   refreshNetworkState();
+
+  if (timelineController && typeof timelineController.setActiveIndex === "function") {
+    timelineController.setActiveIndex(timelineSnapshots.length > 0 ? timelineSnapshots.length - 1 : 0, {
+      emit: true,
+      force: false,
+    });
+  }
 }
 
 function initializeInfoDialog() {
@@ -113,6 +130,184 @@ function renderErrorMessage(message) {
   if (chart) {
     chart.innerHTML = `<p class="error-text">${message}</p>`;
   }
+}
+
+function hydrateTimeline(rawTimeline) {
+  if (!Array.isArray(rawTimeline)) return [];
+  return rawTimeline
+    .map((entry, index) => {
+      if (!entry || !Array.isArray(entry.layers)) return null;
+
+      const layers = entry.layers
+        .map((layer, layerIndex) => {
+          if (!layer) return null;
+          const weightsSource = Array.isArray(layer.weights) ? layer.weights : null;
+          const biasesSource = layer.biases;
+          if (!weightsSource || weightsSource.length === 0) return null;
+          const weights = weightsSource.map((row) => {
+            if (row instanceof Float32Array) {
+              return new Float32Array(row);
+            }
+            if (Array.isArray(row)) {
+              return Float32Array.from(row);
+            }
+            throw new Error("Timeline snapshot contains an invalid weight row.");
+          });
+          let biases;
+          if (biasesSource instanceof Float32Array) {
+            biases = new Float32Array(biasesSource);
+          } else if (Array.isArray(biasesSource)) {
+            biases = Float32Array.from(biasesSource);
+          } else {
+            biases = new Float32Array(weights[0]?.length ?? 0);
+          }
+          return {
+            name: typeof layer.name === "string" ? layer.name : `dense_${layerIndex}`,
+            activation: typeof layer.activation === "string" ? layer.activation : "relu",
+            weights,
+            biases,
+          };
+        })
+        .filter(Boolean);
+      if (!layers.length) return null;
+
+      const metrics = typeof entry.metrics === "object" && entry.metrics !== null ? entry.metrics : {};
+      return {
+        id: typeof entry.id === "string" ? entry.id : `snapshot_${index}`,
+        label: typeof entry.label === "string" ? entry.label : `Snapshot ${index + 1}`,
+        description: typeof entry.description === "string" ? entry.description : "",
+        kind: typeof entry.kind === "string" ? entry.kind : "approx",
+        imagesSeen: Number.isFinite(entry.images_seen) ? entry.images_seen : null,
+        targetImages: Number.isFinite(entry.target_images) ? entry.target_images : null,
+        batchesSeen: Number.isFinite(entry.batches_seen) ? entry.batches_seen : null,
+        datasetPasses: Number.isFinite(entry.dataset_passes) ? entry.dataset_passes : null,
+        datasetMultiple: Number.isFinite(entry.dataset_multiple) ? entry.dataset_multiple : null,
+        metrics: {
+          testAccuracy: Number.isFinite(metrics.test_accuracy) ? metrics.test_accuracy : null,
+          avgTrainingLoss: Number.isFinite(metrics.avg_training_loss) ? metrics.avg_training_loss : null,
+        },
+        layers,
+      };
+    })
+    .filter(Boolean);
+}
+
+function formatInteger(value) {
+  if (!Number.isFinite(value)) return "";
+  return Math.round(value).toLocaleString();
+}
+
+function formatDecimal(value, digits) {
+  if (!Number.isFinite(value)) return "";
+  return value.toFixed(digits);
+}
+
+function formatSnapshotDescription(snapshot) {
+  if (snapshot.description) return snapshot.description;
+  const parts = [];
+  if (Number.isFinite(snapshot.imagesSeen)) {
+    parts.push(`${formatInteger(snapshot.imagesSeen)} images`);
+  }
+  if (Number.isFinite(snapshot.datasetMultiple)) {
+    parts.push(`${snapshot.datasetMultiple}× dataset`);
+  } else if (Number.isFinite(snapshot.datasetPasses)) {
+    parts.push(`${formatDecimal(snapshot.datasetPasses, 2)}× dataset`);
+  }
+  if (Number.isFinite(snapshot.batchesSeen)) {
+    parts.push(`${formatInteger(snapshot.batchesSeen)} batches`);
+  }
+  return parts.join(" • ");
+}
+
+function formatTimelineMetrics(metrics) {
+  if (!metrics) return "";
+  const segments = [];
+  if (Number.isFinite(metrics.testAccuracy)) {
+    segments.push(`Test acc: ${formatDecimal(metrics.testAccuracy * 100, 2)}%`);
+  }
+  if (Number.isFinite(metrics.avgTrainingLoss)) {
+    segments.push(`Avg loss: ${formatDecimal(metrics.avgTrainingLoss, 4)}`);
+  }
+  return segments.join(" • ");
+}
+
+function setupTimelineSlider(timelineSnapshots, options = {}) {
+  const overlay = document.getElementById("timelineOverlay");
+  const slider = document.getElementById("timelineSlider");
+  const summary = document.getElementById("timelineSummary");
+  const label = document.getElementById("timelineLabel");
+  const metricsElement = document.getElementById("timelineMetrics");
+
+  if (
+    !overlay ||
+    !slider ||
+    !summary ||
+    !label ||
+    !metricsElement ||
+    !Array.isArray(timelineSnapshots) ||
+    timelineSnapshots.length === 0
+  ) {
+    overlay?.classList.add("hidden");
+    if (slider) {
+      slider.disabled = true;
+      slider.value = "0";
+    }
+    if (summary) summary.textContent = "";
+    if (label) label.textContent = "";
+    if (metricsElement) metricsElement.textContent = "";
+    return null;
+  }
+
+  overlay.classList.remove("hidden");
+  slider.min = "0";
+  slider.max = String(Math.max(timelineSnapshots.length - 1, 0));
+  slider.step = "1";
+  slider.disabled = timelineSnapshots.length <= 1;
+
+  const state = {
+    activeIndex: null,
+  };
+
+  const setActiveIndex = (index, { emit = false, force = false } = {}) => {
+    if (!Number.isFinite(index)) return;
+    const safeIndex = Math.round(index);
+    if (safeIndex < 0 || safeIndex >= timelineSnapshots.length) return;
+    if (!force && state.activeIndex === safeIndex) return;
+
+    state.activeIndex = safeIndex;
+    slider.value = String(safeIndex);
+
+    const snapshot = timelineSnapshots[safeIndex];
+    summary.textContent = snapshot.label;
+    label.textContent = formatSnapshotDescription(snapshot);
+
+    const metricsText = formatTimelineMetrics(snapshot.metrics);
+    metricsElement.textContent = metricsText || "";
+    metricsElement.classList.toggle("timeline-metrics--empty", metricsText.length === 0);
+
+    if (emit && typeof options.onSnapshotChange === "function") {
+      options.onSnapshotChange(snapshot, safeIndex);
+    }
+  };
+
+  slider.addEventListener("input", (event) => {
+    const nextIndex = Number(event.target.value);
+    if (Number.isNaN(nextIndex)) return;
+    setActiveIndex(nextIndex, { emit: true });
+  });
+
+  slider.addEventListener("change", (event) => {
+    const nextIndex = Number(event.target.value);
+    if (Number.isNaN(nextIndex)) return;
+    setActiveIndex(nextIndex, { emit: true });
+  });
+
+  return {
+    setActiveIndex,
+    get activeIndex() {
+      return state.activeIndex;
+    },
+  };
 }
 
 class DigitSketchPad {
@@ -288,12 +483,7 @@ class FeedForwardModel {
     this.architecture = Array.isArray(definition.architecture)
       ? definition.architecture.slice()
       : this.computeArchitecture(definition.layers);
-    this.layers = definition.layers.map((layer, index) => ({
-      name: layer.name ?? `dense_${index}`,
-      activation: layer.activation ?? "relu",
-      weights: layer.weights.map((row) => Float32Array.from(row)),
-      biases: Float32Array.from(layer.biases),
-    }));
+    this.layers = definition.layers.map((layer, index) => this.normaliseLayer(layer, index));
   }
 
   computeArchitecture(layers) {
@@ -305,6 +495,43 @@ class FeedForwardModel {
       architecture.push(layer.biases.length);
     }
     return architecture;
+  }
+
+  normaliseLayer(layer, index) {
+    if (!layer || !Array.isArray(layer.weights) || layer.weights.length === 0) {
+      throw new Error(`Layer ${index} is missing valid weight matrices.`);
+    }
+    const weights = layer.weights.map((row) => {
+      if (row instanceof Float32Array) {
+        return new Float32Array(row);
+      }
+      if (Array.isArray(row)) {
+        return Float32Array.from(row);
+      }
+      throw new Error(`Layer ${index} contains an invalid weight row.`);
+    });
+    let biases;
+    if (layer.biases instanceof Float32Array) {
+      biases = new Float32Array(layer.biases);
+    } else if (Array.isArray(layer.biases)) {
+      biases = Float32Array.from(layer.biases);
+    } else {
+      biases = new Float32Array(weights.length > 0 ? weights[0].length : 0);
+    }
+    return {
+      name: typeof layer.name === "string" ? layer.name : `dense_${index}`,
+      activation: typeof layer.activation === "string" ? layer.activation : "relu",
+      weights,
+      biases,
+    };
+  }
+
+  updateLayers(layerDefinitions) {
+    if (!Array.isArray(layerDefinitions) || layerDefinitions.length === 0) {
+      throw new Error("Neue Layerdefinitionen müssen mindestens eine Schicht enthalten.");
+    }
+    this.layers = layerDefinitions.map((layer, index) => this.normaliseLayer(layer, index));
+    this.architecture = this.computeArchitecture(this.layers);
   }
 
   propagate(pixels) {
@@ -790,6 +1017,29 @@ class NeuralVisualizer {
         maxAbsWeight,
       });
     });
+  }
+
+  disposeConnectionMeshes() {
+    this.connectionGroups.forEach((group) => {
+      this.scene.remove(group.mesh);
+      if (group.mesh.geometry && typeof group.mesh.geometry.dispose === "function") {
+        group.mesh.geometry.dispose();
+      }
+      const material = group.mesh.material;
+      if (Array.isArray(material)) {
+        material.forEach((mat) => {
+          if (mat && typeof mat.dispose === "function") mat.dispose();
+        });
+      } else if (material && typeof material.dispose === "function") {
+        material.dispose();
+      }
+    });
+    this.connectionGroups = [];
+  }
+
+  updateNetworkWeights() {
+    this.disposeConnectionMeshes();
+    this.buildConnections();
   }
 
   findImportantConnections(layer) {

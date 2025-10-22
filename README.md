@@ -41,11 +41,16 @@ python3 training/mlp_train.py \
 Key options:
 
 - `--hidden-dims`: Hidden layer sizes (default `128 64`). Keep the network modest so the visualisation stays responsive.
-- `--epochs`: Training epochs (default `5`). Increase for better accuracy.
+- `--epochs`: Minimum training epochs (default `5`). The script will automatically extend the run so the timeline hits the 10× dataset milestone.
+- `--batch-size`: Mini-batch size (default `128`).
 - `--device`: Force `mps`, `cuda`, or `cpu`. By default the script picks the best available backend.
 - `--skip-train`: Export the randomly initialised weights without running training (useful for debugging the pipeline).
 
 After training, update `VISUALIZER_CONFIG.weightUrl` in `assets/main.js` if you export to a different location/name. Refresh the browser to load the new weights.
+
+### Training timeline export
+
+Every exported JSON now includes a `timeline` array capturing the network at key milestones (≈100, 1 000, 3 000, 10 000, 30 000 images plus 1×, 2×, 5×, 10× dataset passes). The slider at the bottom of the UI lets you swap between these snapshots, showing how weights, activations, and accuracy evolve from random initialisation through 10 full passes over MNIST. Re-export the weights with the updated script to generate fresh timeline data for your own runs.
 
 ## Notes & Tips
 

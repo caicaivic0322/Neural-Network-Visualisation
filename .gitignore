@@ -1,2 +1,3 @@
 .tmp_playwright/
 releases/
+data/MNIST/
