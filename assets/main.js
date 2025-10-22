@@ -53,6 +53,7 @@ async function initializeVisualizer() {
     brush: VISUALIZER_CONFIG.brush,
   });
   const probabilityPanel = new ProbabilityPanel(document.getElementById("predictionChart"));
+  const neuronDetailPanel = new NeuronDetailPanel(document.getElementById("neuronDetailPanel"));
   const neuralScene = new NeuralVisualizer(neuralModel, {
     layerSpacing: VISUALIZER_CONFIG.layerSpacing,
     maxConnectionsPerNeuron: VISUALIZER_CONFIG.maxConnectionsPerNeuron,
@@ -62,7 +63,9 @@ async function initializeVisualizer() {
     hiddenNodeRadius: VISUALIZER_CONFIG.hiddenNodeRadius,
     connectionRadius: VISUALIZER_CONFIG.connectionRadius,
     showFpsOverlay: VISUALIZER_CONFIG.showFpsOverlay,
+    onNeuronFocusChange: (payload) => neuronDetailPanel.update(payload),
   });
+  neuronDetailPanel.setOnClear(() => neuralScene.clearSelection());
 
   if (typeof window !== "undefined") {
     // Expose scene instance for interactive inspection in DevTools.
@@ -82,7 +85,7 @@ async function initializeVisualizer() {
     const propagation = neuralModel.propagate(rawInput);
     const activationsForVisualization = propagation.activations.slice();
     activationsForVisualization[0] = rawInput;
-    neuralScene.update(activationsForVisualization, propagation.activations);
+    neuralScene.update(activationsForVisualization, propagation.activations, propagation.preActivations);
 
     const logitsTyped =
       propagation.preActivations.length > 0
@@ -1062,6 +1065,180 @@ class ProbabilityPanel {
   }
 }
 
+class NeuronDetailPanel {
+  constructor(root) {
+    this.root = root;
+    this.onClear = null;
+    this.handleClose = this.handleClose.bind(this);
+    if (this.root) {
+      this.root.classList.remove("visible");
+      this.root.innerHTML = "";
+    }
+  }
+
+  setOnClear(handler) {
+    this.onClear = typeof handler === "function" ? handler : null;
+  }
+
+  handleClose(event) {
+    event.preventDefault();
+    if (typeof this.onClear === "function") {
+      this.onClear();
+    } else {
+      this.hide();
+    }
+  }
+
+  hide() {
+    if (!this.root) return;
+    this.root.innerHTML = "";
+    this.root.classList.remove("visible");
+  }
+
+  update(payload) {
+    if (!this.root) return;
+    if (!payload) {
+      this.hide();
+      return;
+    }
+
+    const incomingRows = Array.isArray(payload.incoming)
+      ? payload.incoming
+          .map(
+            (entry) => `
+      <div class="neuron-detail-panel__row">
+        <div><small>Quelle</small><br><strong>#${entry.sourceIndex + 1}</strong></div>
+        <div><small>Input</small><br>${this.formatValue(entry.sourceActivation)}</div>
+        <div><small>Gewicht</small><br>${this.formatValue(entry.weight)}</div>
+        <div><small>Produkt</small><br><strong>${this.formatValue(entry.contribution)}</strong></div>
+      </div>
+    `,
+          )
+          .join("")
+      : "";
+
+    const outgoingRows = Array.isArray(payload.outgoing)
+      ? payload.outgoing
+          .map(
+            (entry) => `
+      <div class="neuron-detail-panel__row">
+        <div><small>Ziel</small><br><strong>#${entry.targetIndex + 1}</strong></div>
+        <div><small>Aktivierung (Ziel)</small><br>${this.formatValue(entry.targetActivation)}</div>
+        <div><small>Gewicht</small><br>${this.formatValue(entry.weight)}</div>
+        <div><small>Beitrag</small><br><strong>${this.formatValue(entry.contribution)}</strong></div>
+      </div>
+    `,
+          )
+          .join("")
+      : "";
+
+    const hasIncoming = Boolean(payload.incoming?.length);
+    const hasOutgoing = Boolean(payload.outgoing?.length);
+    const biasMarkup =
+      payload.bias !== null && payload.bias !== undefined
+        ? `
+      <div class="neuron-detail-panel__row neuron-detail-panel__row--bias">
+        <div><small>Bias</small><br><strong>${this.formatValue(payload.bias)}</strong></div>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    `
+        : "";
+    const totalMarkup =
+      payload.preActivation !== null && payload.preActivation !== undefined
+        ? `
+      <div class="neuron-detail-panel__row neuron-detail-panel__row--total">
+        <div><small>Σ</small><br><strong>${this.formatValue(payload.preActivation)}</strong></div>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    `
+        : "";
+
+    const incomingSection = hasIncoming
+      ? `
+      <div>
+        <div class="neuron-detail-panel__section-title">Eingehende Beiträge</div>
+        <div class="neuron-detail-panel__row neuron-detail-panel__row--header">
+          <div>Quelle</div>
+          <div>Input</div>
+          <div>Gewicht</div>
+          <div>Produkt</div>
+        </div>
+        ${incomingRows}
+        ${biasMarkup}
+        ${totalMarkup}
+      </div>
+    `
+      : `<div class="neuron-detail-panel__empty">Keine eingehenden Verbindungen für diese Schicht.</div>`;
+
+    const outgoingSection = hasOutgoing
+      ? `
+      <div>
+        <div class="neuron-detail-panel__section-title">Ausgehende Beiträge</div>
+        <div class="neuron-detail-panel__row neuron-detail-panel__row--header">
+          <div>Ziel</div>
+          <div>Aktivierung (Ziel)</div>
+          <div>Gewicht</div>
+          <div>Beitrag</div>
+        </div>
+        ${outgoingRows}
+      </div>
+    `
+      : "";
+
+    const summaryParts = [];
+    if (payload.preActivation !== null && payload.preActivation !== undefined) {
+      summaryParts.push(
+        `Σ = Σ(input × gewicht) ${payload.bias !== null && payload.bias !== undefined ? "+ bias " : ""}= ${this.formatValue(payload.preActivation)}`,
+      );
+    }
+    if (payload.activationValue !== null && payload.activationValue !== undefined) {
+      summaryParts.push(`Aktivierung = ${this.formatValue(payload.activationValue)}`);
+    }
+
+    const summaryText = summaryParts.join(" • ");
+
+    this.root.innerHTML = `
+      <div class="neuron-detail-panel__inner">
+        <div class="neuron-detail-panel__header">
+          <div class="neuron-detail-panel__title">${payload.layerLabel} • Neuron ${payload.neuronIndex + 1}${
+            payload.activationName ? ` (${payload.activationName})` : ""
+          }</div>
+          <button type="button" class="neuron-detail-panel__close">Auswahl aufheben</button>
+        </div>
+        <div class="neuron-detail-panel__body">
+          <div class="neuron-detail-panel__summary">${summaryText || ""}</div>
+          <div class="neuron-detail-panel__activations">
+            <span>Eingangsschicht-Größe: ${payload.previousLayerSize ?? "—"}</span>
+            <span>Ausgangsschicht-Größe: ${payload.nextLayerSize ?? "—"}</span>
+          </div>
+          ${incomingSection}
+          ${outgoingSection}
+        </div>
+      </div>
+    `;
+
+    this.root.classList.add("visible");
+    const closeButton = this.root.querySelector(".neuron-detail-panel__close");
+    if (closeButton) {
+      closeButton.addEventListener("click", this.handleClose);
+    }
+  }
+
+  formatValue(value) {
+    if (value === null || value === undefined || Number.isNaN(value)) return "—";
+    if (!Number.isFinite(value)) return value > 0 ? "∞" : value < 0 ? "-∞" : "NaN";
+    const abs = Math.abs(value);
+    if (abs >= 10000 || (abs > 0 && abs < 0.0001)) {
+      return value.toExponential(2);
+    }
+    return value.toFixed(abs >= 1 ? 3 : 4);
+  }
+}
+
 class FpsMonitor {
   constructor() {
     this.frameCount = 0;
@@ -1146,11 +1323,29 @@ class NeuralVisualizer {
       },
       options || {},
     );
+    this.focusChangeCallback =
+      typeof this.options.onNeuronFocusChange === "function" ? this.options.onNeuronFocusChange : null;
+    delete this.options.onNeuronFocusChange;
     this.layerMeshes = [];
     this.connectionGroups = [];
+    this.selectionConnectionGroups = [];
     this.tempObject = new THREE.Object3D();
     this.tempColor = new THREE.Color();
+    this.tempQuaternion = new THREE.Quaternion();
+    this.upVector = new THREE.Vector3(0, 1, 0);
+    this.highlightColor = new THREE.Color(0.85, 0.95, 1.0);
     this.outputLabels = [];
+    this.selectedNeuron = null;
+    this.lastDisplayActivations = null;
+    this.lastNetworkActivations = null;
+    this.lastPreActivations = null;
+    this.currentSelectionDetail = null;
+    this.selectionCylinderGeometry = null;
+    this.selectionConnectionRadiusMultiplier = 1.2;
+    this.selectionConnectionData = null;
+    this.raycaster = new THREE.Raycaster();
+    this.pointerVector = new THREE.Vector2();
+    this.pointerDown = null;
     this.initThreeScene();
     this.buildLayers();
     this.buildConnections();
@@ -1196,7 +1391,424 @@ class NeuralVisualizer {
     rimLight.position.set(0, 12, -24);
     this.scene.add(rimLight);
 
+    this.renderer.domElement.addEventListener("pointerdown", (event) => this.handleScenePointerDown(event));
+    this.renderer.domElement.addEventListener("pointerup", (event) => this.handleScenePointerUp(event));
     window.addEventListener("resize", () => this.handleResize());
+    window.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") {
+        this.clearSelection();
+      }
+    });
+  }
+
+  handleScenePointerDown(event) {
+    if (!event.isPrimary && event.isPrimary !== undefined) return;
+    if (event.button !== 0) return;
+    this.pointerDown = { x: event.clientX, y: event.clientY };
+  }
+
+  handleScenePointerUp(event) {
+    if (!event.isPrimary && event.isPrimary !== undefined) return;
+    if (event.button !== 0) return;
+    if (!this.pointerDown) return;
+    const dx = event.clientX - this.pointerDown.x;
+    const dy = event.clientY - this.pointerDown.y;
+    this.pointerDown = null;
+    const distance = Math.hypot(dx, dy);
+    if (distance > 4) return;
+    this.trySelectNeuron(event);
+  }
+
+  trySelectNeuron(event) {
+    if (!this.layerMeshes.length || !this.camera) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.pointerVector.set(x, y);
+    this.raycaster.setFromCamera(this.pointerVector, this.camera);
+
+    const intersections = [];
+    this.layerMeshes.forEach((layer, layerIndex) => {
+      if (!layer?.mesh) return;
+      const hits = this.raycaster.intersectObject(layer.mesh, false);
+      hits.forEach((hit) => {
+        if (Number.isInteger(hit.instanceId)) {
+          intersections.push({
+            distance: hit.distance,
+            layerIndex,
+            neuronIndex: hit.instanceId,
+          });
+        }
+      });
+    });
+    intersections.sort((a, b) => a.distance - b.distance);
+    const hit = intersections[0];
+    if (!hit) {
+      this.clearSelection();
+      return;
+    }
+    this.setSelectedNeuron(hit.layerIndex, hit.neuronIndex);
+  }
+
+  setSelectedNeuron(layerIndex, neuronIndex) {
+    if (!Number.isInteger(layerIndex) || !Number.isInteger(neuronIndex)) return;
+    const layer = this.layerMeshes[layerIndex];
+    if (!layer) return;
+    const boundedIndex = Math.max(0, Math.min(layer.positions.length - 1, neuronIndex));
+    if (
+      this.selectedNeuron &&
+      this.selectedNeuron.layerIndex === layerIndex &&
+      this.selectedNeuron.neuronIndex === boundedIndex
+    ) {
+      this.clearSelection();
+      return;
+    }
+    this.selectedNeuron = { layerIndex, neuronIndex: boundedIndex };
+    this.updateConnectionVisibility();
+    this.buildSelectionConnectionMeshes();
+    if (this.lastDisplayActivations && this.lastNetworkActivations) {
+      this.update(this.lastDisplayActivations, this.lastNetworkActivations, this.lastPreActivations);
+    } else if (typeof this.requestRender === "function") {
+      this.requestRender();
+    }
+  }
+
+  clearSelection() {
+    if (!this.selectedNeuron) return;
+    this.selectedNeuron = null;
+    this.selectionConnectionData = null;
+    this.currentSelectionDetail = null;
+    this.disposeSelectionConnectionMeshes();
+    this.updateConnectionVisibility();
+    if (typeof this.focusChangeCallback === "function") {
+      this.focusChangeCallback(null);
+    }
+    if (this.lastDisplayActivations && this.lastNetworkActivations) {
+      this.update(this.lastDisplayActivations, this.lastNetworkActivations, this.lastPreActivations);
+    } else if (typeof this.requestRender === "function") {
+      this.requestRender();
+    }
+  }
+
+  updateConnectionVisibility() {
+    const showDefaultConnections = !this.selectedNeuron;
+    this.connectionGroups.forEach((group) => {
+      if (!group?.mesh) return;
+      group.mesh.visible = showDefaultConnections;
+    });
+  }
+
+  ensureSelectionGeometry() {
+    if (!this.selectionCylinderGeometry) {
+      const baseRadius = this.options.connectionRadius ?? 0.02;
+      const radius = baseRadius * this.selectionConnectionRadiusMultiplier;
+      this.selectionCylinderGeometry = new THREE.CylinderGeometry(radius, radius, 1, 16, 1, true);
+    }
+    return this.selectionCylinderGeometry;
+  }
+
+  buildSelectionConnectionMeshes() {
+    this.disposeSelectionConnectionMeshes();
+    if (!this.selectedNeuron) return;
+    const data = this.collectSelectionConnectionData();
+    this.selectionConnectionData = data;
+    const baseGeometry = this.ensureSelectionGeometry();
+    const connectionMaterial = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      toneMapped: false,
+    });
+
+    const createMesh = (connections) => {
+      const mesh = new THREE.InstancedMesh(baseGeometry.clone(), connectionMaterial.clone(), connections.length);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      const colorAttribute = new THREE.InstancedBufferAttribute(new Float32Array(connections.length * 3), 3);
+      colorAttribute.setUsage(THREE.DynamicDrawUsage);
+      mesh.instanceColor = colorAttribute;
+      connections.forEach((connection, index) => {
+        const direction = connection.targetPosition.clone().sub(connection.sourcePosition);
+        const length = direction.length();
+        if (length <= 0) {
+          return;
+        }
+        const midpoint = connection.sourcePosition.clone().addScaledVector(direction, 0.5);
+        this.tempObject.position.copy(midpoint);
+        this.tempQuaternion.setFromUnitVectors(this.upVector, direction.clone().normalize());
+        this.tempObject.quaternion.copy(this.tempQuaternion);
+        this.tempObject.scale.set(1, length, 1);
+        this.tempObject.updateMatrix();
+        mesh.setMatrixAt(index, this.tempObject.matrix);
+        mesh.setColorAt(index, this.tempColor.setRGB(0.8, 0.8, 0.8));
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor.needsUpdate = true;
+      return mesh;
+    };
+
+    if (data.incoming.length) {
+      const mesh = createMesh(data.incoming);
+      if (mesh) {
+        this.scene.add(mesh);
+        this.selectionConnectionGroups.push({
+          mesh,
+          connections: data.incoming,
+          direction: "incoming",
+        });
+      }
+    }
+    if (data.outgoing.length) {
+      const mesh = createMesh(data.outgoing);
+      if (mesh) {
+        this.scene.add(mesh);
+        this.selectionConnectionGroups.push({
+          mesh,
+          connections: data.outgoing,
+          direction: "outgoing",
+        });
+      }
+    }
+  }
+
+  disposeSelectionConnectionMeshes() {
+    if (!Array.isArray(this.selectionConnectionGroups)) {
+      this.selectionConnectionGroups = [];
+      return;
+    }
+    this.selectionConnectionGroups.forEach((group) => {
+      if (!group?.mesh) return;
+      this.scene.remove(group.mesh);
+      const material = group.mesh.material;
+      if (Array.isArray(material)) {
+        material.forEach((mat) => {
+          if (mat && typeof mat.dispose === "function") mat.dispose();
+        });
+      } else if (material && typeof material.dispose === "function") {
+        material.dispose();
+      }
+      if (group.mesh.geometry && typeof group.mesh.geometry.dispose === "function") {
+        group.mesh.geometry.dispose();
+      }
+    });
+    this.selectionConnectionGroups = [];
+  }
+
+  collectSelectionConnectionData() {
+    if (!this.selectedNeuron) {
+      return { incoming: [], outgoing: [], bias: 0, previousLayerSize: null, nextLayerSize: null };
+    }
+    const { layerIndex, neuronIndex } = this.selectedNeuron;
+    const targetLayerMesh = this.layerMeshes[layerIndex];
+    const targetPosition = targetLayerMesh?.positions?.[neuronIndex];
+    const incoming = [];
+    const outgoing = [];
+    let bias = null;
+    let previousLayerSize = null;
+    let nextLayerSize = null;
+
+    if (layerIndex > 0 && this.mlp.layers[layerIndex - 1]) {
+      const prevLayerMesh = this.layerMeshes[layerIndex - 1];
+      const weightLayer = this.mlp.layers[layerIndex - 1];
+      const weights = weightLayer.weights?.[neuronIndex];
+      bias = weightLayer.biases?.[neuronIndex] ?? 0;
+      if (weights && targetPosition) {
+        previousLayerSize = weights.length;
+        for (let sourceIndex = 0; sourceIndex < weights.length; sourceIndex += 1) {
+          const sourcePosition = prevLayerMesh?.positions?.[sourceIndex];
+          if (!sourcePosition) continue;
+          incoming.push({
+            sourceLayer: layerIndex - 1,
+            targetLayer: layerIndex,
+            sourceIndex,
+            targetIndex: neuronIndex,
+            weight: weights[sourceIndex] ?? 0,
+            sourcePosition,
+            targetPosition,
+          });
+        }
+      }
+    }
+
+    if (layerIndex < this.layerMeshes.length - 1 && this.mlp.layers[layerIndex]) {
+      const nextLayerMesh = this.layerMeshes[layerIndex + 1];
+      const weightLayer = this.mlp.layers[layerIndex];
+      const weights = weightLayer.weights ?? [];
+      nextLayerSize = weights.length;
+      const sourcePosition = targetPosition;
+      for (let targetIndex = 0; targetIndex < weights.length; targetIndex += 1) {
+        const row = weights[targetIndex];
+        if (!row || sourcePosition == null) continue;
+        const targetPosition = nextLayerMesh?.positions?.[targetIndex];
+        if (!targetPosition) continue;
+        outgoing.push({
+          sourceLayer: layerIndex,
+          targetLayer: layerIndex + 1,
+          sourceIndex: neuronIndex,
+          targetIndex,
+          weight: row[neuronIndex] ?? 0,
+          sourcePosition,
+          targetPosition,
+        });
+      }
+    }
+
+    return { incoming, outgoing, bias, previousLayerSize, nextLayerSize };
+  }
+
+  updateSelectionVisuals() {
+    if (!this.selectedNeuron) return;
+    if (!this.lastNetworkActivations) return;
+    if (!this.selectionConnectionData) {
+      this.selectionConnectionData = this.collectSelectionConnectionData();
+    }
+    const detail = this.buildSelectionDetail();
+    this.currentSelectionDetail = detail;
+    this.updateSelectedConnectionColors(detail);
+    if (typeof this.focusChangeCallback === "function") {
+      this.focusChangeCallback(detail);
+    }
+    if (typeof this.requestRender === "function") {
+      this.requestRender();
+    }
+  }
+
+  buildSelectionDetail() {
+    if (!this.selectedNeuron) return null;
+    const { layerIndex, neuronIndex } = this.selectedNeuron;
+    const data = this.selectionConnectionData || this.collectSelectionConnectionData();
+    const layerActivations = this.lastNetworkActivations?.[layerIndex] ?? null;
+    const activationValue =
+      Array.isArray(layerActivations) || layerActivations instanceof Float32Array
+        ? layerActivations[neuronIndex] ?? null
+        : null;
+    const previousActivations =
+      layerIndex > 0 ? this.lastNetworkActivations?.[layerIndex - 1] ?? null : null;
+    const nextActivations =
+      layerIndex < this.lastNetworkActivations.length - 1
+        ? this.lastNetworkActivations?.[layerIndex + 1] ?? null
+        : null;
+    let sumContributions = 0;
+
+    const incoming = data.incoming.map((connection) => {
+      const sourceActivation =
+        previousActivations && (previousActivations instanceof Float32Array || Array.isArray(previousActivations))
+          ? previousActivations[connection.sourceIndex] ?? 0
+          : 0;
+      const contribution = sourceActivation * connection.weight;
+      sumContributions += contribution;
+      return {
+        sourceIndex: connection.sourceIndex,
+        weight: connection.weight,
+        sourceActivation,
+        contribution,
+      };
+    });
+
+    const bias = data.bias ?? (layerIndex > 0 ? 0 : null);
+    const preActivationFromModel =
+      layerIndex > 0
+        ? this.lastPreActivations?.[layerIndex - 1]?.[neuronIndex] ?? null
+        : activationValue ?? null;
+    const inferredPreActivation =
+      bias !== null && bias !== undefined ? sumContributions + bias : sumContributions;
+    const preActivation =
+      preActivationFromModel !== null && preActivationFromModel !== undefined
+        ? preActivationFromModel
+        : inferredPreActivation;
+
+    const outgoingContributionBase = Number.isFinite(activationValue) ? activationValue : 0;
+    const outgoing = data.outgoing.map((connection) => {
+      const targetActivation =
+        nextActivations && (nextActivations instanceof Float32Array || Array.isArray(nextActivations))
+          ? nextActivations[connection.targetIndex] ?? 0
+          : 0;
+      return {
+        targetIndex: connection.targetIndex,
+        weight: connection.weight,
+        targetActivation,
+        contribution: outgoingContributionBase * connection.weight,
+      };
+    });
+
+    return {
+      layerIndex,
+      neuronIndex,
+      layerLabel: this.describeLayer(layerIndex),
+      activationName: this.getActivationName(layerIndex),
+      activationValue: activationValue ?? null,
+      preActivation,
+      bias: bias ?? null,
+      incoming,
+      outgoing,
+      previousLayerSize: data.previousLayerSize,
+      nextLayerSize: data.nextLayerSize,
+    };
+  }
+
+  updateSelectedConnectionColors(detail) {
+    if (!detail) return;
+    const incomingGroup = this.selectionConnectionGroups.find((group) => group.direction === "incoming");
+    if (incomingGroup && detail.incoming.length === incomingGroup.connections.length) {
+      const maxContribution = detail.incoming.reduce(
+        (acc, item) => Math.max(acc, Math.abs(item.contribution)),
+        0,
+      );
+      const scale = maxContribution > 1e-6 ? maxContribution : 1;
+      detail.incoming.forEach((item, index) => {
+        const normalized = clamp(item.contribution / scale, -1, 1);
+        const magnitude = Math.abs(normalized);
+        if (magnitude < 1e-4) {
+          this.tempColor.setRGB(0.4, 0.4, 0.4);
+        } else if (normalized >= 0) {
+          this.tempColor.setRGB(0.2, 0.85 * magnitude + 0.15, 0.2);
+        } else {
+          this.tempColor.setRGB(0.85 * magnitude + 0.15, 0.2, 0.2);
+        }
+        incomingGroup.mesh.setColorAt(index, this.tempColor);
+      });
+      incomingGroup.mesh.instanceColor.needsUpdate = true;
+    }
+
+    const outgoingGroup = this.selectionConnectionGroups.find((group) => group.direction === "outgoing");
+    if (outgoingGroup && detail.outgoing.length === outgoingGroup.connections.length) {
+      const maxContribution = detail.outgoing.reduce(
+        (acc, item) => Math.max(acc, Math.abs(item.contribution)),
+        0,
+      );
+      const scale = maxContribution > 1e-6 ? maxContribution : 1;
+      detail.outgoing.forEach((item, index) => {
+        const normalized = clamp(item.contribution / scale, -1, 1);
+        const magnitude = Math.abs(normalized);
+        if (magnitude < 1e-4) {
+          this.tempColor.setRGB(0.35, 0.35, 0.35);
+        } else if (normalized >= 0) {
+          this.tempColor.setRGB(0.25, 0.75 * magnitude + 0.25, 0.9);
+        } else {
+          this.tempColor.setRGB(0.9, 0.3, 0.85 * magnitude + 0.15);
+        }
+        outgoingGroup.mesh.setColorAt(index, this.tempColor);
+      });
+      outgoingGroup.mesh.instanceColor.needsUpdate = true;
+    }
+  }
+
+  describeLayer(layerIndex) {
+    if (layerIndex === 0) {
+      return `Eingabeschicht (${this.mlp.architecture[layerIndex]} Knoten)`;
+    }
+    if (layerIndex === this.mlp.architecture.length - 1) {
+      return `Ausgabeschicht (${this.mlp.architecture[layerIndex]} Knoten)`;
+    }
+    return `Verborgene Schicht ${layerIndex} (${this.mlp.architecture[layerIndex]} Knoten)`;
+  }
+
+  getActivationName(layerIndex) {
+    if (layerIndex === 0) return null;
+    const activation = this.mlp.layers?.[layerIndex - 1]?.activation;
+    if (typeof activation !== "string") return null;
+    return activation.toUpperCase();
   }
 
   buildLayers() {
@@ -1239,7 +1851,7 @@ class NeuralVisualizer {
         mesh.instanceMatrix.needsUpdate = true;
         mesh.instanceColor.needsUpdate = true;
         this.scene.add(mesh);
-        this.layerMeshes.push({ mesh, positions, type: "input" });
+        this.layerMeshes.push({ mesh, positions, type: "input", layerIndex });
       } else {
         const material = hiddenBaseMaterial.clone();
         // Clone geometry per mesh so each InstancedMesh can have its own instanceColor attribute
@@ -1261,7 +1873,7 @@ class NeuralVisualizer {
         mesh.instanceColor.needsUpdate = true;
         this.scene.add(mesh);
         const layerType = isOutputLayer ? "output" : "hidden";
-        this.layerMeshes.push({ mesh, positions, type: layerType });
+        this.layerMeshes.push({ mesh, positions, type: layerType, layerIndex });
         if (isOutputLayer) {
           this.createOutputLabels(positions);
         }
@@ -1457,6 +2069,14 @@ class NeuralVisualizer {
   updateNetworkWeights() {
     this.disposeConnectionMeshes();
     this.buildConnections();
+    if (this.selectedNeuron) {
+      this.updateConnectionVisibility();
+      this.selectionConnectionData = null;
+      this.buildSelectionConnectionMeshes();
+      if (this.lastDisplayActivations && this.lastNetworkActivations) {
+        this.updateSelectionVisuals();
+      }
+    }
   }
 
   setMaxConnectionsPerNeuron(limit) {
@@ -1495,12 +2115,15 @@ class NeuralVisualizer {
     return { selected, maxAbsWeight };
   }
 
-  update(displayActivations, networkActivations = displayActivations) {
+  update(displayActivations, networkActivations = displayActivations, preActivations = null) {
+    this.lastDisplayActivations = displayActivations;
+    this.lastNetworkActivations = networkActivations;
+    this.lastPreActivations = preActivations;
     this.layerMeshes.forEach((layer, layerIndex) => {
       const values = displayActivations[layerIndex];
       if (!values) return;
       const scale = layerIndex === 0 ? 1 : maxAbsValue(displayActivations[layerIndex]);
-      this.applyNodeColors(layer, values, scale || 1);
+      this.applyNodeColors(layer, values, scale || 1, layerIndex);
     });
 
     this.connectionGroups.forEach((group) => {
@@ -1508,17 +2131,32 @@ class NeuralVisualizer {
       if (!sourceValues) return;
       this.applyConnectionColors(group, sourceValues);
     });
+    if (this.selectedNeuron) {
+      this.updateSelectionVisuals();
+    } else if (typeof this.focusChangeCallback === "function" && this.currentSelectionDetail !== null) {
+      this.currentSelectionDetail = null;
+      this.focusChangeCallback(null);
+    }
     if (typeof this.requestRender === "function") {
       this.requestRender();
     }
   }
 
-  applyNodeColors(layer, values, scale) {
+  applyNodeColors(layer, values, scale, layerIndex) {
     const { mesh, type } = layer;
+    const activeSelection = this.selectedNeuron;
     if (type === "input") {
       for (let i = 0; i < values.length; i += 1) {
         const value = clamp(values[i], 0, 1);
-        this.tempColor.setRGB(value, value, value);
+        const isSelected =
+          activeSelection &&
+          layerIndex === activeSelection.layerIndex &&
+          i === activeSelection.neuronIndex;
+        if (isSelected) {
+          this.tempColor.copy(this.highlightColor);
+        } else {
+          this.tempColor.setRGB(value, value, value);
+        }
         mesh.setColorAt(i, this.tempColor);
       }
       mesh.instanceColor.needsUpdate = true;
@@ -1529,7 +2167,16 @@ class NeuralVisualizer {
     for (let i = 0; i < values.length; i += 1) {
       const value = values[i];
       const normalized = clamp(value / safeScale, 0, 1);
-      this.tempColor.setRGB(normalized, normalized, normalized);
+      if (
+        activeSelection &&
+        (layerIndex !== activeSelection.layerIndex || i !== activeSelection.neuronIndex)
+      ) {
+        this.tempColor.setRGB(0.14, 0.15, 0.18);
+      } else if (activeSelection) {
+        this.tempColor.copy(this.highlightColor);
+      } else {
+        this.tempColor.setRGB(normalized, normalized, normalized);
+      }
       mesh.setColorAt(i, this.tempColor);
     }
     mesh.instanceColor.needsUpdate = true;
