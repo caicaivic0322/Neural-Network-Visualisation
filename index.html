@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MNIST MLP – Visualisierung der Inferenz</title>
+    <title>MNIST MLP - 神经网络推理可视化</title>
   <script type="module" crossorigin src="./assets/main.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/main.css">
 </head>
@@ -33,8 +33,8 @@
     <div id="instructionsOverlay" class="instructions-overlay">
         <div class="instructions-container">
             <div class="instructions-content">
-                <p><strong>Zeichnen:</strong> Auf dem Raster klicken und ziehen (Rechtsklick zum Löschen)</p>
-                <p><strong>3D-Steuerung:</strong> • Linke Taste + ziehen = drehen • Rechte Taste + ziehen = verschieben • Scrollrad = zoomen</p>
+                <p><strong>绘制：</strong> 在网格上点击并拖拽（右键清除）</p>
+                <p><strong>3D控制：</strong> • 左键 + 拖拽 = 旋转 • 右键 + 拖拽 = 平移 • 滚轮 = 缩放</p>
             </div>
         </div>
     </div>
@@ -42,12 +42,12 @@
     <!-- Mobile Instructions Overlay -->
     <div id="mobileInstructionsOverlay" class="mobile-instructions-overlay">
         <div class="mobile-instructions-content">
-            <div class="mobile-instructions-title">Touch-Steuerung</div>
+            <div class="mobile-instructions-title">触摸控制</div>
             <ul class="mobile-gesture-list">
-                <li><strong>Zeichnen:</strong> Tippen und auf dem Raster ziehen</li>
-                <li><strong>Drehen:</strong> Mit einem Finger ziehen</li>
-                <li><strong>Verschieben:</strong> Mit zwei Fingern bewegen</li>
-                <li><strong>Zoomen:</strong> Finger zusammenziehen oder spreizen</li>
+                <li><strong>绘制：</strong> 点击并在网格上拖拽</li>
+                <li><strong>旋转：</strong> 单指拖拽</li>
+                <li><strong>平移：</strong> 双指移动</li>
+                <li><strong>缩放：</strong> 双指捏合或张开</li>
             </ul>
         </div>
     </div>
@@ -84,7 +84,7 @@
     <div id="timelineOverlay" class="timeline-overlay hidden">
         <div class="timeline-container">
             <div class="timeline-header">
-                <span class="timeline-title">Trainingsverlauf</span>
+                <span class="timeline-title">训练进度</span>
                 <span id="timelineSummary" class="timeline-summary"></span>
             </div>
             <input
@@ -95,7 +95,7 @@
                 value="0"
                 step="1"
                 disabled
-                aria-label="Trainingsfortschritt"
+                aria-label="训练进度"
             >
             <div class="timeline-meta">
                 <span id="timelineLabel" class="timeline-label"></span>
@@ -117,56 +117,56 @@
     <div id="infoModal" class="info-modal">
         <div class="info-modal-content">
             <div class="info-modal-header">
-                <h3>MNIST-Ziffernklassifikation – Visualisierung der Inferenz</h3>
+                <h3>MNIST数字分类 - 神经网络推理可视化</h3>
                 <button id="closeInfoModal" class="close-modal-btn">×</button>
             </div>
             <div class="info-modal-body">
-                <p><strong>Interaktive Visualisierung eines neuronalen Netzes</strong></p>
-                <p>Diese Anwendung zeigt ein kompaktes Multi-Layer-Perceptron (MLP), das auf MNIST trainiert wurde. Zeichnen Sie eine Ziffer und beobachten Sie, wie die Aktivierungen in Echtzeit durch alle vollvernetzten Schichten propagieren.</p>
+                <p><strong>神经网络交互式可视化</strong></p>
+                <p>这个应用程序展示了一个在MNIST上训练的紧凑型多层感知器(MLP)。绘制一个数字，观察激活值如何在全连接层中实时传播。</p>
                 
-                <h4>So funktioniert es:</h4>
+                <h4>工作原理：</h4>
                 <ul>
-                    <li><strong>Zeichnen:</strong> Im 2D-Raster (links oben) klicken und ziehen, um eine Ziffer zu skizzieren</li>
-                    <li><strong>Beobachten:</strong> Verfolgen Sie, wie Ihre Skizze durch die Schichten des Netzes im 3D-Raum wandert</li>
-                    <li><strong>Vorhersage:</strong> Prüfen Sie die Wahrscheinlichkeit für jede Ziffer (0–9) im Diagramm (rechts oben)</li>
+                    <li><strong>绘制：</strong> 在2D网格（左上角）上点击并拖拽来绘制数字</li>
+                    <li><strong>观察：</strong> 观察您的绘画如何通过网络层在3D空间中传播</li>
+                    <li><strong>预测：</strong> 查看图表中每个数字（0-9）的概率（右上角）</li>
                 </ul>
 
-                <h4>Netzarchitektur (Standardexport):</h4>
+                <h4>网络架构（标准导出）：</h4>
                 <ul>
-                    <li><strong>Eingabeschicht:</strong> 28×28 Pixelraster (Ihre Zeichnung)</li>
-                    <li><strong>Dichtes Layer 1:</strong> 784 → 64 Neuronen mit ReLU</li>
-                    <li><strong>Dichtes Layer 2:</strong> 64 → 32 Neuronen mit ReLU</li>
-                    <li><strong>Ausgabeschicht:</strong> 32 → 10 Logits → Softmax-Wahrscheinlichkeiten</li>
+                    <li><strong>输入层：</strong> 28×28像素网格（您的绘画）</li>
+                    <li><strong>全连接层1：</strong> 784 → 64神经元，使用ReLU激活</li>
+                    <li><strong>全连接层2：</strong> 64 → 32神经元，使用ReLU激活</li>
+                    <li><strong>输出层：</strong> 32 → 10个logits → Softmax概率</li>
                 </ul>
 
-                <h4>3D-Steuerung:</h4>
+                <h4>3D控制：</h4>
                 <ul>
-                    <li><strong>Drehen:</strong> Linke Maustaste gedrückt halten und ziehen</li>
-                    <li><strong>Verschieben:</strong> Rechte Maustaste gedrückt halten und ziehen</li>
-                    <li><strong>Zoomen:</strong> Mausrad benutzen</li>
+                    <li><strong>旋转：</strong> 按住左键并拖拽</li>
+                    <li><strong>平移：</strong> 按住右键并拖拽</li>
+                    <li><strong>缩放：</strong> 使用鼠标滚轮</li>
                 </ul>
 
-                <h4>Farbkodierung:</h4>
+                <h4>颜色编码：</h4>
                 <ul>
-                    <li><strong>Knoten:</strong> Die Farbe zeigt die Aktivierungsstärke (dunkle Blautöne für niedrige/negative Werte, kräftige Korallenfarben für starke positive Aktivierungen)</li>
-                    <li><strong>Verbindungen:</strong> Warme Farben kennzeichnen starke positive Beiträge, kühle Töne negative Einflüsse, gedämpfte Linien nahezu Null.</li>
+                    <li><strong>节点：</strong> 颜色表示激活强度（深蓝色表示低/负值，鲜艳的珊瑚色表示强正激活）</li>
+                    <li><strong>连接：</strong> 暖色表示强正贡献，冷色表示负影响，浅色表示接近零。</li>
                 </ul>
 
-                <h4>Eigenes Modell trainieren:</h4>
+                <h4>训练自己的模型：</h4>
                 <ul>
-                    <li><code>python training/mlp_train.py</code> starten, um das MLP zu trainieren (inkl. Apple-Metal-Beschleunigung, falls verfügbar).</li>
-                    <li>Das Skript schreibt <code>exports/mlp_weights.json</code>, das der Visualisierer beim Laden einliest.</li>
-                    <li>Anzahl versteckter Neuronen, Epochen oder Exportpfade über die in <code>training/mlp_train.py</code> dokumentierten CLI-Optionen verändern.</li>
+                    <li>运行 <code>python training/mlp_train.py</code> 来训练MLP（包括Apple Metal加速，如果可用）。</li>
+                    <li>脚本会写入 <code>exports/mlp_weights.json</code>，可视化器在加载时读取此文件。</li>
+                    <li>通过 <code>training/mlp_train.py</code> 中记录的CLI选项来更改隐藏神经元数量、训练轮数或导出路径。</li>
                 </ul>
 
-                <h4>Echtzeitfunktionen:</h4>
+                <h4>实时功能：</h4>
                 <ul>
-                    <li><strong>Schichtaktivierungen:</strong> Instanzen von Kugeln zeigen Aktivierungen pro Neuron mit farbcodierter Stärke.</li>
-                    <li><strong>Wichtige Verbindungen:</strong> Jedes Zielneuron hebt seine stärksten Eingangsgewichte für bessere Lesbarkeit hervor.</li>
-                    <li><strong>Live-Wahrscheinlichkeiten:</strong> Das Balkendiagramm aktualisiert die Logits → Softmax-Werte in Echtzeit.</li>
+                    <li><strong>层激活：</strong> 球体实例显示每个神经元的激活，带有颜色编码的强度。</li>
+                    <li><strong>重要连接：</strong> 每个目标神经元突出显示其最强的输入权重，以提高可读性。</li>
+                    <li><strong>实时概率：</strong> 条形图实时更新logits → softmax值。</li>
                 </ul>
 
-                <p>Das Netzwerk ist bewusst kompakt gehalten, um eine flüssige Echtzeitdarstellung zu gewährleisten. Sie können gern mit anderen Schichtgrößen neu trainieren – halten Sie die Architektur nur schlank, damit die 3D-Ansicht reaktionsschnell bleibt.</p>
+                <p>网络被有意保持紧凑，以确保流畅的实时显示。您可以尝试使用其他层大小重新训练 - 只需保持架构精简，以保持3D视图响应迅速。</p>
             </div>
         </div>
     </div>
@@ -175,13 +175,13 @@
     <div id="advancedSettingsModal" class="advanced-modal" role="dialog" aria-modal="true" aria-labelledby="advancedSettingsTitle">
         <div class="advanced-modal-content">
             <div class="advanced-modal-header">
-                <h3 id="advancedSettingsTitle">Erweiterte Einstellungen</h3>
+                <h3 id="advancedSettingsTitle">高级设置</h3>
                 <button id="closeAdvancedSettings" class="close-modal-btn" type="button">×</button>
             </div>
             <div class="advanced-modal-body">
                 <div class="advanced-control">
                     <label for="connectionLimitSlider" class="advanced-label">
-                        Maximale Verbindungen pro Neuron
+                        每个神经元的最大连接数
                     </label>
                     <div class="advanced-slider">
                         <input
@@ -195,12 +195,12 @@
                         <span id="connectionLimitValue" class="advanced-value">24</span>
                     </div>
                     <p class="advanced-hint">
-                        Steuert wie viele der stärksten eingehenden Gewichte pro Zielneuron gleichzeitig dargestellt werden; hohe Werte können die Darstellung verlangsamen.
+                        控制每个目标神经元同时显示的最强输入权重的数量；高值可能会减慢渲染速度。
                     </p>
                 </div>
                 <div class="advanced-control">
                     <label for="connectionThresholdSlider" class="advanced-label">
-                        Schwache Verbindungen ausblenden
+                        隐藏弱连接
                     </label>
                     <div class="advanced-slider">
                         <input
@@ -214,12 +214,12 @@
                         <span id="connectionThresholdValue" class="advanced-value">0.0000</span>
                     </div>
                     <p class="advanced-hint">
-                        Blendet Verbindungen mit geringer absoluter Gewichtung aus; 0 zeigt alle Verbindungen.
+                        隐藏绝对权重值较小的连接；0显示所有连接。
                     </p>
                 </div>
                 <div class="advanced-control">
                     <label for="connectionThicknessSlider" class="advanced-label">
-                        Verbindungsdicke
+                        连接粗细
                     </label>
                     <div class="advanced-slider">
                         <input
@@ -232,12 +232,12 @@
                         <span id="connectionThicknessValue" class="advanced-value"></span>
                     </div>
                     <p class="advanced-hint">
-                        Passt den Radius der Verbindungszylinder an; höhere Werte machen alle Linien sichtbar dicker.
+                        调整连接圆柱体的半径；较高的值使所有线条明显变粗。
                     </p>
                 </div>
                 <div class="advanced-control">
                     <label for="brushThicknessSlider" class="advanced-label">
-                        Strichstärke
+                        笔刷厚度
                     </label>
                     <div class="advanced-slider">
                         <input
@@ -251,12 +251,12 @@
                         <span id="brushThicknessValue" class="advanced-value">1.4</span>
                     </div>
                     <p class="advanced-hint">
-                        Kleinere Werte erzeugen feinere Linien; größere Werte füllen das Raster schneller aus.
+                        较小的值产生更细的线条；较大的值更快填充网格。
                     </p>
                 </div>
                 <div class="advanced-control">
                     <label for="brushStrengthSlider" class="advanced-label">
-                        Strichintensität
+                        笔刷强度
                     </label>
                     <div class="advanced-slider">
                         <input
@@ -270,7 +270,7 @@
                         <span id="brushStrengthValue" class="advanced-value">95%</span>
                     </div>
                     <p class="advanced-hint">
-                        Bestimmt, wie stark ein Pinselstrich die Pixelhelligkeit erhöht.
+                        确定笔刷笔画增加像素亮度的强度。
                     </p>
                 </div>
             </div>

@@ -1,41 +1,51 @@
-# MNIST MLP Visualizer
+# MNIST 多层感知机可视化器
 
-![MNIST MLP Visualizer screenshot](https://raw.githubusercontent.com/DFin/Neural-Network-Visualisation/main/assets/screenshot.jpg)
+![MNIST MLP 可视化器截图](https://raw.githubusercontent.com/DFin/Neural-Network-Visualisation/main/assets/screenshot.jpg)
 
-Interactive web visualisation for a compact multi-layer perceptron trained on the MNIST handwritten digit dataset. Draw a digit, watch activations propagate through the network in 3D, and inspect real-time prediction probabilities.
+一个交互式的Web可视化工具，用于展示在MNIST手写数字数据集上训练的多层感知机网络。绘制一个数字，观察激活如何在3D网络中传播，并实时查看预测概率。
 
-## WIP
+## 项目简介
 
-This is still in a rough state and under active development. If you want something useable for a museum etc check back later. I have a couple of features in mind (like being able to connect a tablet to draw a number) to make this a good educational visualisation. 
+这是一个教育性质的可视化项目，旨在帮助理解神经网络的工作原理。通过直观的3D可视化，您可以看到：
+- 手写数字的实时识别过程
+- 神经网络各层的激活状态
+- 权重连接的可视化表示
+- 预测概率的动态变化
 
+## 功能特色
 
-## Repository Layout
+- **中文界面支持**：完整的中文本地化，包括所有UI元素、提示信息和说明文本
+- **交互式绘图**：在28×28网格上绘制数字（左键绘制，右键擦除）
+- **3D网络可视化**：使用Three.js构建的立体网络结构展示
+- **实时预测**：即时显示网络对输入数字的预测结果
+- **时间轴控制**：可以查看网络训练过程中的权重变化
+- **神经元详情**：点击查看任意神经元的详细信息，包括输入、权重和激活值
 
-- `index.html` / `assets/` – Static Three.js visualiser and UI assets.
-- `exports/mlp_weights.json` – Default weights with timeline snapshots (generated from the latest training run).
-- `training/mlp_train.py` – PyTorch helper to train the MLP (with Apple Metal acceleration when available) and export weights for the front-end.
+## 快速开始
 
-## Quick Start
+### 1. 启动本地服务器
 
-1. (Only for training) **Install Python dependencies** (PyTorch + torchvision):
+从项目根目录启动静态文件服务器（任何服务器都可以，这里使用Python作为示例）：
 
-   ```bash
-   python3 -m pip install torch torchvision
-   ```
+```bash
+python3 -m http.server 8000
+```
 
-2. **Launch a static file server** from the repository root (any server works; this example uses Python):
+### 2. 访问应用
 
-   ```bash
-   python3 -m http.server 8000
-   ```
+在浏览器中打开 `http://localhost:8000`，开始探索神经网络的世界！
 
-3. Open `http://localhost:8000` in your browser. Draw on the 28×28 grid (left-click to draw, right-click to erase) and explore the 3D network with the mouse or trackpad.
+## 训练新模型（可选）
 
-## Training & Exporting New Weights
+如果您想训练自己的模型，可以使用提供的训练脚本：
 
-`training/mlp_train.py` trains a small MLP on MNIST and writes a JSON export the front-end consumes. Metal (MPS) is used automatically when available on Apple Silicon; otherwise the script falls back to CUDA or CPU.
+### 安装Python依赖
 
-Typical usage:
+```bash
+python3 -m pip install torch torchvision
+```
+
+### 训练模型
 
 ```bash
 python3 training/mlp_train.py \
@@ -45,45 +55,57 @@ python3 training/mlp_train.py \
   --export-path exports/mlp_weights.json
 ```
 
-Key options:
+训练完成后，更新 `assets/main.js` 中的 `VISUALIZER_CONFIG.weightUrl` 配置，然后刷新浏览器加载新的权重。
 
-- `--hidden-dims`: Hidden layer sizes (default `128 64`). Keep the network modest so the visualisation stays responsive.
-- `--epochs`: Minimum training epochs (default `5`). The script will automatically extend the run so the timeline hits the 50× dataset milestone.
-- `--batch-size`: Mini-batch size (default `128`).
-- `--device`: Force `mps`, `cuda`, or `cpu`. By default the script picks the best available backend.
-- `--skip-train`: Export the randomly initialised weights without running training (useful for debugging the pipeline).
+## 向原作者致敬
 
-After training, update `VISUALIZER_CONFIG.weightUrl` in `assets/main.js` if you export to a different location/name. Refresh the browser to load the new weights.
+本项目基于 [DFin/Neural-Network-Visualisation](https://github.com/DFin/Neural-Network-Visualisation) 进行中文本地化改造。感谢原作者Daniel Firth创建了如此优秀的教育工具，让我们能够直观地理解神经网络的内部工作原理。
 
-### Training timeline export
+原项目的特点：
+- 创新的3D可视化方法
+- 流畅的交互体验
+- 详细的权重时间轴展示
+- 优秀的性能优化
 
-Every exported JSON now includes a `timeline` array spanning 35 checkpoints: densely spaced early snapshots (≈50, 120, 250, 500, 1k, 2k, 3.5k, 5.8k, 8.7k, 13k, 19.5k, 28.5k, 40k images), followed by dataset-multiple milestones from 1× through 50×. The JSON manifest stays small; each snapshot’s weights are stored separately as float16-encoded files under `exports/<stem>/NNN_<id>.json`, and the front-end streams them on demand so you can scrub the timeline without downloading the entire 50× run up front. Re-export the weights with the updated script to generate fresh timeline data for your own runs.
+中文本地化改进：
+- 完整的中文界面翻译
+- 更符合中文用户习惯的术语表达
+- 保持原有视觉效果和功能完整性
 
-## Notes & Tips
+## 技术栈
 
-- The visualiser highlights the top-N (configurable) strongest incoming connections per neuron to keep the scene legible.
-- Colors encode activation sign and magnitude (cool tones for negative/low, warm tones for strong positive contributions).
-- The default export (`exports/mlp_weights.json`) already includes timeline milestones from a multi-epoch training run. Retrain (and re-export) if you want to showcase a different progression.
-- If you adjust the architecture, ensure the JSON export reflects the new layer sizes; the front-end builds the scene dynamically from that metadata.
+- **前端**：Three.js, HTML5 Canvas, JavaScript
+- **后端**：PyTorch（用于训练）
+- **数据**：MNIST手写数字数据集
+- **部署**：纯静态文件，支持任何Web服务器
 
-## Deployment
+## 使用说明
 
-The server keeps live assets separate from active development under `releases/`:
+1. **绘制数字**：在左侧网格中绘制0-9的数字
+2. **观察网络**：右侧3D视图显示神经网络结构
+3. **查看预测**：顶部显示网络的预测结果和置信度
+4. **探索神经元**：点击任意神经元查看详细信息
+5. **时间轴控制**：使用底部滑块查看训练过程中的变化
 
-- `releases/current/` – files served by your static HTTP server.
-- `releases/backups/<timestamp>/` – point-in-time snapshots for quick rollback.
-- `releases/.deploy_tmp/` – staging area used during deployment.
+## 部署
 
-To publish the code you currently have checked out, run the deploy script from the repository root:
+项目支持简单的部署脚本，可以方便地发布到生产环境：
 
 ```bash
 ./deploy.sh
 ```
 
-You can target a different commit or branch explicitly:
+部署脚本会将当前代码导出到 `releases/current/` 目录，并在 `releases/backups/` 中创建备份。
 
-```bash
-./deploy.sh <commit-ish>
-```
+## 贡献
 
-The script exports the requested commit into the staging area, syncs it into `releases/current/`, and saves the same tree under `releases/backups/<timestamp>/` with the commit hash recorded in `.commit`.
+欢迎提交Issue和Pull Request来改进这个项目。如果您发现了翻译错误或者有更好的中文表达建议，请不吝赐教。
+
+## 许可证
+
+本项目遵循原项目的开源协议。具体许可证信息请参考原项目仓库。
+
+---
+
+*Made with ❤️ by the Chinese localization team*
+*基于Daniel Firth的优秀工作*

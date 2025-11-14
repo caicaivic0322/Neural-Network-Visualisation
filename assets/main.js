@@ -23,7 +23,7 @@ const MNIST_SAMPLE_MANIFEST_URL = "./assets/data/mnist-test-manifest.json";
 document.addEventListener("DOMContentLoaded", () => {
   initializeVisualizer().catch((error) => {
     console.error(error);
-    renderErrorMessage("Visualisierung konnte nicht initialisiert werden. Details finden Sie in der Konsole.");
+    renderErrorMessage("可视化工具无法初始化。请查看控制台中的详细信息。");
   });
 });
 
@@ -31,7 +31,7 @@ async function loadMnistTestSamples(manifestPath = MNIST_SAMPLE_MANIFEST_URL) {
   const manifestUrl = new URL(manifestPath, window.location.href);
   const manifestResponse = await fetch(manifestUrl.toString());
   if (!manifestResponse.ok) {
-    throw new Error(`Konnte MNIST-Manifest nicht laden (${manifestResponse.status}).`);
+    throw new Error(`无法加载MNIST清单 (${manifestResponse.status})。`);
   }
   const manifest = await manifestResponse.json();
   const rows = Number(manifest?.imageShape?.[0]) || 28;
@@ -41,19 +41,19 @@ async function loadMnistTestSamples(manifestPath = MNIST_SAMPLE_MANIFEST_URL) {
   const imageFile = manifest?.image?.file;
   const labelFile = manifest?.labels?.file;
   if (!imageFile || !labelFile) {
-    throw new Error("Manifest enthält keine gültigen Dateipfade für Bilder oder Labels.");
+    throw new Error("清单不包含图像或标签的有效文件路径。");
   }
 
   const [imageBuffer, labelBuffer] = await Promise.all([
     fetch(new URL(imageFile, manifestUrl).toString()).then((response) => {
       if (!response.ok) {
-        throw new Error(`Konnte MNIST-Bilddaten nicht laden (${response.status}).`);
+        throw new Error(`无法加载MNIST图像数据 (${response.status})。`);
       }
       return response.arrayBuffer();
     }),
     fetch(new URL(labelFile, manifestUrl).toString()).then((response) => {
       if (!response.ok) {
-        throw new Error(`Konnte MNIST-Labeldaten nicht laden (${response.status}).`);
+        throw new Error(`无法加载MNIST标签数据 (${response.status})。`);
       }
       return response.arrayBuffer();
     }),
@@ -65,22 +65,22 @@ async function loadMnistTestSamples(manifestPath = MNIST_SAMPLE_MANIFEST_URL) {
     if (sampleSize > 0) {
       const inferredSamples = Math.floor(imageBytes.length / sampleSize);
       if (inferredSamples <= 0) {
-        throw new Error("Aus den MNIST-Bilddaten konnte keine Stichprobengröße abgeleitet werden.");
+        throw new Error("无法从MNIST图像数据中推导出样本大小。");
       }
       if (labelBytes.length !== inferredSamples) {
-        throw new Error("Anzahl der Labels stimmt nicht mit den abgeleiteten Stichproben überein.");
+        throw new Error("标签数量与推导出的样本数量不匹配。");
       }
     } else {
-      throw new Error("Manifest enthält keine gültige Stichprobengröße.");
+      throw new Error("清单不包含有效的样本大小。");
     }
   }
 
   const totalSamples = numSamples > 0 ? numSamples : Math.floor(imageBytes.length / sampleSize);
   if (imageBytes.length !== totalSamples * sampleSize) {
-    throw new Error("MNIST-Bilddatenlänge stimmt nicht mit der erwarteten Größe überein.");
+    throw new Error("MNIST图像数据长度与预期大小不匹配。");
   }
   if (labelBytes.length !== totalSamples) {
-    throw new Error("MNIST-Labeldatenlänge stimmt nicht mit der erwarteten Größe überein.");
+    throw new Error("MNIST标签数据长度与预期大小不匹配。");
   }
 
   const digitBuckets = Array.from({ length: 10 }, () => []);
@@ -141,7 +141,7 @@ async function setupMnistSampleButtons({ digitCanvas, onSampleApplied, manifestP
   try {
     loader = await loadMnistTestSamples(manifestPath ?? MNIST_SAMPLE_MANIFEST_URL);
   } catch (error) {
-    console.warn("MNIST-Testdaten konnten nicht geladen werden:", error);
+    console.warn("无法加载MNIST测试数据：", error);
     return null;
   }
   const column = document.createElement("div");
@@ -151,7 +151,7 @@ async function setupMnistSampleButtons({ digitCanvas, onSampleApplied, manifestP
     button.type = "button";
     button.className = "digit-button";
     button.textContent = String(digit);
-    button.setAttribute("aria-label", `Zufällige ${digit} laden`);
+    button.setAttribute("aria-label", `加载随机${digit}`);
     button.addEventListener("click", () => {
       const sample = loader.getRandomSample(digit);
       if (!sample) return;
@@ -175,7 +175,7 @@ async function initializeVisualizer() {
   const weightDefinitionUrl = new URL(VISUALIZER_CONFIG.weightUrl, window.location.href);
   const definition = await fetchNetworkDefinition(weightDefinitionUrl.toString());
   if (!definition?.network) {
-    throw new Error("Ungültige Netzwerkdefinition.");
+    throw new Error("无效的网络定义。");
   }
 
   const timelineSnapshots = hydrateTimeline(definition.timeline, {
@@ -183,7 +183,7 @@ async function initializeVisualizer() {
     baseUrl: weightDefinitionUrl,
   });
   if (!timelineSnapshots.length) {
-    throw new Error("Keine gültigen Timeline-Snapshots gefunden.");
+    throw new Error("未找到有效的训练进度快照。");
   }
   const defaultSnapshotIndex = Math.max(timelineSnapshots.length - 1, 0);
   const initialSnapshot = timelineSnapshots[defaultSnapshotIndex];
@@ -1085,7 +1085,7 @@ class DigitSketchPad {
     this.container.innerHTML = "";
     const title = document.createElement("div");
     title.className = "grid-title";
-    title.textContent = "Ziffer zeichnen";
+    title.textContent = "绘制数字";
     this.interactionRow = document.createElement("div");
     this.interactionRow.className = "grid-interaction-row";
     this.interactionRow.appendChild(this.gridElement);
@@ -1387,7 +1387,7 @@ class ProbabilityPanel {
   build() {
     this.container.innerHTML = "";
     const title = document.createElement("h3");
-    title.textContent = "Wahrscheinlichkeiten der Ziffern";
+    title.textContent = "数字概率";
     this.container.appendChild(title);
 
     this.chartElement = document.createElement("div");
@@ -1456,7 +1456,7 @@ class NetworkInfoPanel {
     }
     this.titleElement = document.createElement("h3");
     this.titleElement.className = "network-info-panel__title";
-    this.titleElement.textContent = "Netzwerkübersicht";
+    this.titleElement.textContent = "网络概览";
 
     this.summaryElement = document.createElement("div");
     this.summaryElement.className = "network-info-panel__summary";
@@ -1563,7 +1563,7 @@ class NetworkInfoPanel {
 
     const totalParameters = layerSummaries.reduce((sum, entry) => sum + entry.parameterCount, 0);
     this.summaryElement.innerHTML = "";
-    this.summaryElement.appendChild(this.buildSummaryLine("Gesamtparameter", totalParameters));
+    this.summaryElement.appendChild(this.buildSummaryLine("总参数", totalParameters));
     if (architecture.length > 0) {
       const firstArchitectureValue = architecture[0];
       const lastArchitectureValue = architecture[architecture.length - 1];
@@ -1576,10 +1576,10 @@ class NetworkInfoPanel {
         typeof lastArchitectureValue === "number" && Number.isFinite(lastArchitectureValue)
           ? lastArchitectureValue
           : lastLayer?.outputSize ?? 0;
-      this.summaryElement.appendChild(this.buildSummaryLine("Eingabeknoten", inputNodes));
-      this.summaryElement.appendChild(this.buildSummaryLine("Ausgabeklassen", outputNodes));
+      this.summaryElement.appendChild(this.buildSummaryLine("输入节点", inputNodes));
+      this.summaryElement.appendChild(this.buildSummaryLine("输出类别", outputNodes));
     }
-    this.summaryElement.appendChild(this.buildSummaryLine("Layer (inkl. Ausgaben)", layerSummaries.length));
+    this.summaryElement.appendChild(this.buildSummaryLine("层数(含输出)", layerSummaries.length));
 
     this.layersElement.innerHTML = "";
     layerSummaries.forEach((entry) => {
@@ -1593,9 +1593,9 @@ class NetworkInfoPanel {
 
       const metrics = document.createElement("div");
       metrics.className = "network-info-panel__layer-metrics";
-      metrics.appendChild(this.buildMetric("Gewichte", entry.weightCount));
-      metrics.appendChild(this.buildMetric("Bias", entry.biasCount));
-      metrics.appendChild(this.buildMetric("Summe", entry.parameterCount));
+      metrics.appendChild(this.buildMetric("权重", entry.weightCount));
+      metrics.appendChild(this.buildMetric("偏置", entry.biasCount));
+      metrics.appendChild(this.buildMetric("总计", entry.parameterCount));
 
       layerRow.appendChild(title);
       layerRow.appendChild(metrics);
@@ -1650,10 +1650,10 @@ class NeuronDetailPanel {
           .map(
             (entry) => `
       <div class="neuron-detail-panel__row">
-        <div><small>Quelle</small><br><strong>#${entry.sourceIndex + 1}</strong></div>
-        <div><small>Input</small><br>${this.formatValue(entry.sourceActivation)}</div>
-        <div><small>Gewicht</small><br>${this.formatValue(entry.weight)}</div>
-        <div><small>Produkt</small><br><strong>${this.formatValue(entry.contribution)}</strong></div>
+        <div><small>来源</small><br><strong>#${entry.sourceIndex + 1}</strong></div>
+        <div><small>输入</small><br>${this.formatValue(entry.sourceActivation)}</div>
+        <div><small>权重</small><br>${this.formatValue(entry.weight)}</div>
+        <div><small>乘积</small><br><strong>${this.formatValue(entry.contribution)}</strong></div>
       </div>
     `,
           )
@@ -1665,10 +1665,10 @@ class NeuronDetailPanel {
           .map(
             (entry) => `
       <div class="neuron-detail-panel__row">
-        <div><small>Ziel</small><br><strong>#${entry.targetIndex + 1}</strong></div>
-        <div><small>Aktivierung (Ziel)</small><br>${this.formatValue(entry.targetActivation)}</div>
-        <div><small>Gewicht</small><br>${this.formatValue(entry.weight)}</div>
-        <div><small>Beitrag</small><br><strong>${this.formatValue(entry.contribution)}</strong></div>
+        <div><small>目标</small><br><strong>#${entry.targetIndex + 1}</strong></div>
+        <div><small>激活(目标)</small><br>${this.formatValue(entry.targetActivation)}</div>
+        <div><small>权重</small><br>${this.formatValue(entry.weight)}</div>
+        <div><small>贡献</small><br><strong>${this.formatValue(entry.contribution)}</strong></div>
       </div>
     `,
           )
@@ -1681,7 +1681,7 @@ class NeuronDetailPanel {
       payload.bias !== null && payload.bias !== undefined
         ? `
       <div class="neuron-detail-panel__row neuron-detail-panel__row--bias">
-        <div><small>Bias</small><br><strong>${this.formatValue(payload.bias)}</strong></div>
+        <div><small>偏置</small><br><strong>${this.formatValue(payload.bias)}</strong></div>
         <div></div>
         <div></div>
         <div></div>
@@ -1713,27 +1713,27 @@ class NeuronDetailPanel {
     const incomingSection = hasIncoming
       ? `
       <div>
-        <div class="neuron-detail-panel__section-title">Eingehende Beiträge</div>
+        <div class="neuron-detail-panel__section-title">传入贡献</div>
         <div class="neuron-detail-panel__row neuron-detail-panel__row--header">
-          <div>Quelle</div>
-          <div>Input</div>
-          <div>Gewicht</div>
-          <div>Produkt</div>
+          <div>来源</div>
+          <div>输入</div>
+          <div>权重</div>
+          <div>乘积</div>
         </div>
         ${incomingRows}
       </div>
     `
-      : `<div class="neuron-detail-panel__empty">Keine eingehenden Verbindungen für diese Schicht.</div>`;
+      : `<div class="neuron-detail-panel__empty">该层没有传入连接。</div>`;
 
     const outgoingSection = hasOutgoing
       ? `
       <div>
-        <div class="neuron-detail-panel__section-title">Ausgehende Beiträge</div>
+        <div class="neuron-detail-panel__section-title">传出贡献</div>
         <div class="neuron-detail-panel__row neuron-detail-panel__row--header">
-          <div>Ziel</div>
-          <div>Aktivierung (Ziel)</div>
-          <div>Gewicht</div>
-          <div>Beitrag</div>
+          <div>目标</div>
+          <div>激活(目标)</div>
+          <div>权重</div>
+          <div>贡献</div>
         </div>
         ${outgoingRows}
       </div>
@@ -1742,7 +1742,7 @@ class NeuronDetailPanel {
 
     const summaryFormula =
       payload.preActivation !== null && payload.preActivation !== undefined
-        ? `Σ = Σ(input × gewicht)${payload.bias !== null && payload.bias !== undefined ? " + bias" : ""}`
+        ? `Σ = Σ(输入 × 权重)${payload.bias !== null && payload.bias !== undefined ? " + 偏置" : ""}`
         : "";
 
     this.root.innerHTML = `
@@ -1751,7 +1751,7 @@ class NeuronDetailPanel {
           <div class="neuron-detail-panel__title">${payload.layerLabel} • Neuron ${payload.neuronIndex + 1}${
             payload.activationName ? ` (${payload.activationName})` : ""
           }</div>
-          <button type="button" class="neuron-detail-panel__close">Auswahl aufheben</button>
+          <button type="button" class="neuron-detail-panel__close">取消选择</button>
         </div>
         <div class="neuron-detail-panel__body">
           <div class="neuron-detail-panel__summary">
@@ -1759,8 +1759,8 @@ class NeuronDetailPanel {
           </div>
           ${totalsBlock}
           <div class="neuron-detail-panel__activations">
-            <span>Eingangsschicht-Größe: ${payload.previousLayerSize ?? "—"}</span>
-            <span>Ausgangsschicht-Größe: ${payload.nextLayerSize ?? "—"}</span>
+            <span>输入层大小: ${payload.previousLayerSize ?? "—"}</span>
+        <span>输出层大小: ${payload.nextLayerSize ?? "—"}</span>
           </div>
           ${incomingSection}
           ${outgoingSection}
