@@ -1,6 +1,6 @@
 # MNIST 多层感知机可视化器
 
-![MNIST MLP 可视化器截图](https://raw.githubusercontent.com/DFin/Neural-Network-Visualisation/main/assets/screenshot.png)
+![MNIST MLP 可视化器截图](https://raw.githubusercontent.com/caicaivic0322/Neural-Network-Visualisation/main/assets/screenshot.png)
 
 一个交互式的Web可视化工具，用于展示在MNIST手写数字数据集上训练的多层感知机网络。绘制一个数字，观察激活如何在3D网络中传播，并实时查看预测概率。
 
